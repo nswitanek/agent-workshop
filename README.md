@@ -30,7 +30,7 @@ Hands-on workshop for building AI agents using **Microsoft Foundry** (`azure-ai-
 
 1. **Clone this repository:**
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/nswitanek/agent-workshop
    cd agent-workshop
    ```
 
