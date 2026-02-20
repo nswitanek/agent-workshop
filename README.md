@@ -2,14 +2,53 @@
 
 Hands-on workshop for building AI agents using **Microsoft Foundry** (`azure-ai-projects` SDK) and the **Microsoft Agent Framework** (`agent-framework` SDK), with examples themed around professional services / assurance practice.
 
-## Workshop Agenda
+## Workshop Agenda (6–7 hours)
+
+### Morning Session: Introduction & Copilot Studio (2.5 hours)
 
 | Time | Session |
 |------|---------|
-| 1:30 – 3:00 | [Building Agents in Microsoft Foundry](./01-foundry-agents/) |
-| 3:00 – 3:15 | Break |
-| 3:15 – 4:30 | [Code-First Agents with Microsoft Agent Framework](./02-maf-agents/) |
-| Capstone | [Multi-Agent Risk-Based Audit Planning](./03-capstone/) |
+| 9:00 – 9:30 | **Introduction to Agentic AI** |
+| | • What makes an agent agentic |
+| | • Principles of effective agent design |
+| | • Core agent components and architecture |
+| | • Overview of Microsoft's agent platforms |
+| 9:30 – 10:00 | **Potential Agents at a Professional Services Firm** |
+| | • Mediated brainstorm to identify agents for professional services firm workflows |
+| | • Prioritizing potential agents by business value and implementation complexity |
+| | • Guidance on getting to Version 0 |
+| 10:00 – 11:30 | **Hands-on: Building Agents in Copilot Studio** |
+| | • Setting up your first agent |
+| | • Working with instructions and conversation design |
+| | • Adding knowledge sources and grounding |
+| | • Integrating tools and actions (connectors, Power Automate flows) |
+| | • Towards testing: Curating and synthesizing agent inputs |
+
+### Afternoon Session: Code-First Agents in Copilot Studio and Microsoft Foundry (4 hours)
+
+| Time | Session |
+|------|---------|
+| 12:30 – 1:30 | **Code-First Agents in Copilot Studio** |
+| | • Editing Copilot Studio agents in code |
+| | • Copilot Studio VS Code Extension |
+| 1:30 – 3:00 | [**Building Agents in Microsoft Foundry**](./01-foundry-agents/) |
+| | • Creating your first Foundry agent |
+| | • Configuring instructions and system prompts |
+| | • Adding knowledge (indexes, grounding data) |
+| | • Implementing tools and function calling |
+| | • Working with memory and conversation state |
+| 3:00 – 3:15 | **Break** |
+| 3:15 – 4:30 | [**Code-First Agents with Microsoft Agent Framework**](./02-maf-agents/) |
+| | • Introduction to MAF |
+| | • Agent orchestration patterns |
+| | • Building custom tools and capabilities |
+| | • Advanced memory management |
+| | • Implementing guardrails and safety measures |
+| 4:30 – 5:00 | **Wrap-up and Q&A** |
+| | • Comparing approaches: when to use each platform |
+| | • Best practices and common pitfalls |
+| | • Preview of Day 2: Production readiness |
+| | • Open discussion |
 
 ## Learning Goals
 
@@ -21,7 +60,9 @@ Hands-on workshop for building AI agents using **Microsoft Foundry** (`azure-ai-
 
 ## Prerequisites
 
-- Python 3.11+
+> **First time?** See the full [Environment Setup & Prerequisites](./SETUP.md) checklist for detailed platform access, RBAC roles, and verification steps.
+
+- Python 3.10+
 - An Azure subscription with access to Azure AI Foundry
 - Azure CLI installed and authenticated (`az login`)
 - An Azure OpenAI deployment (e.g., `gpt-4o`)
