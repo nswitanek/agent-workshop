@@ -1,0 +1,71 @@
+{
+  "client": {
+    "name": "Apex Financial Group",
+    "ticker": "AFG",
+    "industry": "Financial Services",
+    "sub_industry": "Diversified Financial Services",
+    "publicly_traded": true,
+    "fiscal_year_end": "2025-12-31",
+    "employees": 4200,
+    "locations": ["New York, NY", "Charlotte, NC", "London, UK"]
+  },
+  "financials": {
+    "total_revenue": 2800000000,
+    "net_income": 420000000,
+    "total_assets": 45000000000,
+    "total_liabilities": 38000000000,
+    "stockholders_equity": 7000000000,
+    "key_accounts": {
+      "loans_receivable": 28000000000,
+      "allowance_for_credit_losses": 850000000,
+      "investment_securities": 9500000000,
+      "deposits": 32000000000,
+      "derivatives_assets": 1200000000,
+      "derivatives_liabilities": 980000000,
+      "goodwill": 1500000000,
+      "intangible_assets": 350000000
+    }
+  },
+  "prior_year_audit": {
+    "opinion": "Unqualified",
+    "material_weaknesses": 0,
+    "significant_deficiencies": 1,
+    "significant_deficiency_detail": "Inadequate review controls over complex derivative valuations",
+    "audit_adjustments": 3,
+    "total_adjustment_amount": 12500000,
+    "key_audit_matters": [
+      "Allowance for credit losses estimation",
+      "Fair value measurement of Level 3 derivatives"
+    ]
+  },
+  "regulatory_environment": {
+    "primary_regulator": "SEC",
+    "banking_regulator": "OCC",
+    "applicable_frameworks": ["US GAAP", "SOX 404", "Basel III"],
+    "recent_regulatory_actions": "None",
+    "pending_litigation": [
+      {
+        "case": "Consumer class action — alleged unfair lending practices",
+        "estimated_exposure": 50000000,
+        "status": "Discovery phase"
+      }
+    ]
+  },
+  "it_environment": {
+    "core_banking_system": "FIS Modern Banking Platform",
+    "erp": "Oracle Cloud ERP",
+    "recent_changes": "Migration to cloud-based trading platform completed Q3 2025",
+    "cybersecurity_incidents": 0,
+    "key_it_controls": [
+      "SOC 1 Type 2 for core banking (third-party)",
+      "Automated reconciliation of trading positions",
+      "Role-based access controls with quarterly recertification"
+    ]
+  },
+  "management_changes": {
+    "new_cfo": false,
+    "new_ceo": false,
+    "controller_tenure_years": 5,
+    "audit_committee_independence": "Fully independent"
+  }
+}

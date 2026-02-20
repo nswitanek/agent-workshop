@@ -1,0 +1,58 @@
+{
+  "engagements": [
+    {
+      "client_name": "Meridian Healthcare",
+      "engagement_id": "ENG-2026-001",
+      "industry": "Healthcare",
+      "type": "Financial Statement Audit",
+      "fiscal_year_end": "2025-12-31",
+      "revenue": 450000000,
+      "total_assets": 820000000,
+      "status": "planning",
+      "risk_level": "High",
+      "partner": "Sarah Chen",
+      "key_risks": [
+        "Revenue recognition complexity (multiple payer types)",
+        "Regulatory compliance (HIPAA, Stark Law)",
+        "Recent acquisition integration",
+        "Complex estimation (allowance for doubtful accounts)"
+      ]
+    },
+    {
+      "client_name": "Pinnacle Manufacturing",
+      "engagement_id": "ENG-2026-002",
+      "industry": "Manufacturing",
+      "type": "Financial Statement Audit",
+      "fiscal_year_end": "2025-12-31",
+      "revenue": 180000000,
+      "total_assets": 310000000,
+      "status": "fieldwork",
+      "risk_level": "Medium",
+      "partner": "James Rivera",
+      "key_risks": [
+        "Inventory valuation (FIFO vs weighted average)",
+        "Fixed asset impairment assessment",
+        "Related party transactions",
+        "Foreign currency translation"
+      ]
+    },
+    {
+      "client_name": "Cascade Energy",
+      "engagement_id": "ENG-2026-003",
+      "industry": "Energy",
+      "type": "Integrated Audit",
+      "fiscal_year_end": "2025-12-31",
+      "revenue": 1200000000,
+      "total_assets": 3500000000,
+      "status": "planning",
+      "risk_level": "High",
+      "partner": "Maria Gonzalez",
+      "key_risks": [
+        "Asset retirement obligations (significant estimates)",
+        "Commodity hedging and derivatives (ASC 815)",
+        "Environmental liabilities",
+        "ICFR over complex IT systems"
+      ]
+    }
+  ]
+}

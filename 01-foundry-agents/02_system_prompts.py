@@ -1,0 +1,86 @@
+"""
+02 — Configuring Instructions and System Prompts
+
+Demonstrates how system prompts shape agent behavior. Creates two agents
+with different instruction styles for the same assurance domain and
+compares their responses.
+
+Concepts: instructions, persona definition, domain-specific prompting
+"""
+
+import os
+
+from azure.ai.projects import AIProjectClient
+from azure.identity import AzureCliCredential
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# A concise, general-purpose instruction set
+BASIC_INSTRUCTIONS = """\
+You are an assistant for a professional services firm's assurance practice.
+Answer questions about auditing clearly and concisely.
+"""
+
+# A detailed, role-specific instruction set with guardrails
+DETAILED_INSTRUCTIONS = """\
+You are a Senior Audit Manager AI assistant at a Big Four accounting firm.
+
+Your role:
+- Provide guidance on audit methodology aligned with PCAOB and AICPA standards
+- Help staff plan and execute audit engagements
+- Ensure responses reference applicable professional standards (e.g., AS 2201, AU-C 315)
+
+Guardrails:
+- Never provide legal advice — recommend consulting the firm's legal counsel
+- Always caveat that professional judgment is required for engagement-specific decisions
+- Do not disclose confidential client information
+
+Tone: Professional, precise, and educational.
+"""
+
+
+def run_agent(client, instructions, label, question):
+    """Helper to create an agent, ask a question, and print the response."""
+    agent = client.agents.create_agent(
+        model=os.environ["MODEL_DEPLOYMENT_NAME"],
+        name=f"AuditAssistant-{label}",
+        instructions=instructions,
+    )
+
+    thread = client.agents.threads.create()
+    client.agents.messages.create(thread_id=thread.id, role="user", content=question)
+
+    run = client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
+
+    if run.status == "completed":
+        messages = client.agents.messages.list(thread_id=thread.id)
+        for msg in messages:
+            if msg.role == "assistant":
+                print(f"[{label}] {msg.content[0].text.value}\n")
+                break
+
+    client.agents.delete_agent(agent.id)
+
+
+def main():
+    client = AIProjectClient(
+        credential=AzureCliCredential(),
+        endpoint=os.environ["PROJECT_ENDPOINT"],
+    )
+
+    question = "How should we assess the risk of material misstatement for a new audit client?"
+
+    print("=" * 60)
+    print("BASIC INSTRUCTIONS")
+    print("=" * 60)
+    run_agent(client, BASIC_INSTRUCTIONS, "Basic", question)
+
+    print("=" * 60)
+    print("DETAILED INSTRUCTIONS")
+    print("=" * 60)
+    run_agent(client, DETAILED_INSTRUCTIONS, "Detailed", question)
+
+
+if __name__ == "__main__":
+    main()
