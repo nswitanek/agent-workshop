@@ -3,7 +3,7 @@ azure-ai-projects>=1.0.0b7
 azure-identity>=1.19.0
 
 # Microsoft Agent Framework (Session 2 & Capstone)
-agent-framework --pre
+agent-framework
 
 # Utilities
 python-dotenv>=1.0.0

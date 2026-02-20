@@ -1,31 +1,34 @@
 """
 01 — Creating Your First Foundry Agent
 
-Creates a minimal agent using the Azure AI Projects SDK, sends a single
+Creates a minimal agent using the Azure AI Agents SDK, sends a single
 message, and prints the response. This is the simplest possible agent.
 
-Concepts: AIProjectClient, agent creation, threads, runs, messages
+Concepts: AgentsClient, agent creation, threads, runs, messages
 """
 
 import os
+from pathlib import Path
 
-from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import AgentStreamEvent
+from azure.ai.agents import AgentsClient
+from azure.ai.agents.models import AgentStreamEvent
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
 load_dotenv()
 
+OUTPUTS_DIR = Path(__file__).parent / "outputs"
+
 
 def main():
     # Connect to your Azure AI Foundry project
-    client = AIProjectClient(
+    client = AgentsClient(
         credential=AzureCliCredential(),
         endpoint=os.environ["PROJECT_ENDPOINT"],
     )
 
     # Create an agent with basic instructions
-    agent = client.agents.create_agent(
+    agent = client.create_agent(
         model=os.environ["MODEL_DEPLOYMENT_NAME"],
         name="AssuranceAssistant",
         instructions="You are a helpful assistant for an assurance practice at a professional services firm.",
@@ -33,28 +36,38 @@ def main():
     print(f"Created agent: {agent.id}")
 
     # Create a conversation thread
-    thread = client.agents.threads.create()
+    thread = client.threads.create()
 
     # Send a user message
-    client.agents.messages.create(
+    client.messages.create(
         thread_id=thread.id,
         role="user",
         content="What are the key phases of a financial statement audit?",
     )
 
-    # Run the agent and stream the response
+    # Run the agent and stream the response, saving to markdown file
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    output_file = OUTPUTS_DIR / "01_first_agent.md"
+    response_chunks: list[str] = []
+
     print("\nAgent response:")
-    with client.agents.runs.stream(thread_id=thread.id, agent_id=agent.id) as stream:
+    with client.runs.stream(thread_id=thread.id, agent_id=agent.id) as stream:
         for event_type, event_data, _ in stream:
             if event_type == AgentStreamEvent.THREAD_MESSAGE_DELTA:
                 for part in event_data.delta.content:
                     if hasattr(part, "text") and part.text:
-                        print(part.text.value, end="", flush=True)
+                        text = part.text.value
+                        print(text, end="", flush=True)
+                        response_chunks.append(text)
     print()
 
+    # Write the full response to a markdown file
+    output_file.write_text("".join(response_chunks), encoding="utf-8")
+    print(f"\nResponse saved to {output_file}")
+
     # Clean up
-    client.agents.delete_agent(agent.id)
-    print("\nAgent deleted.")
+    client.delete_agent(agent.id)
+    print("Agent deleted.")
 
 
 if __name__ == "__main__":

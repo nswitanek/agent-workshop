@@ -9,12 +9,16 @@ Concepts: instructions, persona definition, domain-specific prompting
 """
 
 import os
+from pathlib import Path
 
-from azure.ai.projects import AIProjectClient
+from azure.ai.agents import AgentsClient
+from azure.ai.agents.models import AgentStreamEvent
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
 load_dotenv()
+
+OUTPUTS_DIR = Path(__file__).parent / "outputs"
 
 # A concise, general-purpose instruction set
 BASIC_INSTRUCTIONS = """\
@@ -41,45 +45,60 @@ Tone: Professional, precise, and educational.
 
 
 def run_agent(client, instructions, label, question):
-    """Helper to create an agent, ask a question, and print the response."""
-    agent = client.agents.create_agent(
+    """Helper to create an agent, ask a question, and stream the response."""
+    agent = client.create_agent(
         model=os.environ["MODEL_DEPLOYMENT_NAME"],
         name=f"AuditAssistant-{label}",
         instructions=instructions,
     )
+    print(f"[{label}] Agent created: {agent.id}")
 
-    thread = client.agents.threads.create()
-    client.agents.messages.create(thread_id=thread.id, role="user", content=question)
+    thread = client.threads.create()
+    client.messages.create(thread_id=thread.id, role="user", content=question)
 
-    run = client.agents.runs.create_and_process(thread_id=thread.id, agent_id=agent.id)
+    response_chunks: list[str] = []
+    print(f"[{label}] Streaming response:")
+    with client.runs.stream(thread_id=thread.id, agent_id=agent.id) as stream:
+        for event_type, event_data, _ in stream:
+            if event_type == AgentStreamEvent.THREAD_MESSAGE_DELTA:
+                for part in event_data.delta.content:
+                    if hasattr(part, "text") and part.text:
+                        text = part.text.value
+                        print(text, end="", flush=True)
+                        response_chunks.append(text)
+    print("\n")
 
-    if run.status == "completed":
-        messages = client.agents.messages.list(thread_id=thread.id)
-        for msg in messages:
-            if msg.role == "assistant":
-                print(f"[{label}] {msg.content[0].text.value}\n")
-                break
-
-    client.agents.delete_agent(agent.id)
+    client.delete_agent(agent.id)
+    return "".join(response_chunks)
 
 
 def main():
-    client = AIProjectClient(
+    client = AgentsClient(
         credential=AzureCliCredential(),
         endpoint=os.environ["PROJECT_ENDPOINT"],
     )
 
     question = "How should we assess the risk of material misstatement for a new audit client?"
 
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    output_parts: list[str] = []
+
     print("=" * 60)
     print("BASIC INSTRUCTIONS")
     print("=" * 60)
-    run_agent(client, BASIC_INSTRUCTIONS, "Basic", question)
+    basic_response = run_agent(client, BASIC_INSTRUCTIONS, "Basic", question)
+    output_parts.append(f"# System Prompts Comparison\n\n## Question\n\n{question}\n")
+    output_parts.append(f"## Basic Instructions\n\n{basic_response}\n")
 
     print("=" * 60)
     print("DETAILED INSTRUCTIONS")
     print("=" * 60)
-    run_agent(client, DETAILED_INSTRUCTIONS, "Detailed", question)
+    detailed_response = run_agent(client, DETAILED_INSTRUCTIONS, "Detailed", question)
+    output_parts.append(f"## Detailed Instructions\n\n{detailed_response}\n")
+
+    output_file = OUTPUTS_DIR / "02_system_prompts.md"
+    output_file.write_text("\n".join(output_parts), encoding="utf-8")
+    print(f"\nResponses saved to {output_file}")
 
 
 if __name__ == "__main__":

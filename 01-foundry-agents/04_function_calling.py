@@ -10,13 +10,16 @@ Concepts: FunctionTool, function definitions, tool execution loop
 
 import json
 import os
+from pathlib import Path
 
-from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import FunctionTool, ToolSet, RequiredFunctionToolCall
+from azure.ai.agents import AgentsClient
+from azure.ai.agents.models import FunctionTool, ToolSet, RequiredFunctionToolCall
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
 load_dotenv()
+
+OUTPUTS_DIR = Path(__file__).parent / "outputs"
 
 # --- Simulated backend functions ---
 
@@ -90,13 +93,13 @@ TOOL_DEFINITIONS = [
 
 
 def main():
-    client = AIProjectClient(
+    client = AgentsClient(
         credential=AzureCliCredential(),
         endpoint=os.environ["PROJECT_ENDPOINT"],
     )
 
     # Create agent with function tools
-    agent = client.agents.create_agent(
+    agent = client.create_agent(
         model=os.environ["MODEL_DEPLOYMENT_NAME"],
         name="ToolsAgent",
         instructions=(
@@ -107,8 +110,8 @@ def main():
     )
     print(f"Created agent: {agent.id}")
 
-    thread = client.agents.threads.create()
-    client.agents.messages.create(
+    thread = client.threads.create()
+    client.messages.create(
         thread_id=thread.id,
         role="user",
         content=(
@@ -118,10 +121,11 @@ def main():
     )
 
     # Run with tool-call handling loop
-    run = client.agents.runs.create(thread_id=thread.id, agent_id=agent.id)
+    run = client.runs.create(thread_id=thread.id, agent_id=agent.id)
+    tool_call_log: list[str] = []
 
     while True:
-        run = client.agents.runs.get(thread_id=thread.id, run_id=run.id)
+        run = client.runs.get(thread_id=thread.id, run_id=run.id)
 
         if run.status == "completed":
             break
@@ -133,26 +137,39 @@ def main():
                     if fn:
                         args = json.loads(tool_call.function.arguments)
                         result = fn(**args)
-                        print(f"  Tool call: {tool_call.function.name}({args}) → {result}")
+                        log_entry = f"  Tool call: {tool_call.function.name}({args}) → {result}"
+                        print(log_entry)
+                        tool_call_log.append(log_entry)
                         tool_outputs.append({"tool_call_id": tool_call.id, "output": result})
 
-            client.agents.runs.submit_tool_outputs(
+            client.runs.submit_tool_outputs(
                 thread_id=thread.id, run_id=run.id, tool_outputs=tool_outputs
             )
         elif run.status in ("failed", "cancelled", "expired"):
             print(f"Run ended with status: {run.status}")
             break
 
-    # Print final response
+    # Print and save the final response
+    response_text = ""
     if run.status == "completed":
-        messages = client.agents.messages.list(thread_id=thread.id)
+        messages = client.messages.list(thread_id=thread.id)
         for msg in messages:
             if msg.role == "assistant":
-                print(f"\nAgent response:\n{msg.content[0].text.value}")
+                response_text = msg.content[0].text.value
+                print(f"\nAgent response:\n{response_text}")
                 break
 
-    client.agents.delete_agent(agent.id)
-    print("\nAgent deleted.")
+    OUTPUTS_DIR.mkdir(exist_ok=True)
+    output_file = OUTPUTS_DIR / "04_function_calling.md"
+    output_parts = ["# Function Calling Results\n"]
+    if tool_call_log:
+        output_parts.append("## Tool Calls\n\n```\n" + "\n".join(tool_call_log) + "\n```\n")
+    output_parts.append(f"## Agent Response\n\n{response_text}\n")
+    output_file.write_text("\n".join(output_parts), encoding="utf-8")
+    print(f"\nResponse saved to {output_file}")
+
+    client.delete_agent(agent.id)
+    print("Agent deleted.")
 
 
 if __name__ == "__main__":

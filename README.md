@@ -34,23 +34,47 @@ Hands-on workshop for building AI agents using **Microsoft Foundry** (`azure-ai-
    cd agent-workshop
    ```
 
-2. **Create a virtual environment and install dependencies:**
+2. **Install `uv` (if needed):**
    ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   pip install -r requirements.txt
+   # macOS / Linux
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+
+   # Windows (PowerShell)
+   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
 
-3. **Configure environment variables:**
+3. **Create a virtual environment and install dependencies with `uv`:**
+   ```bash
+   uv venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   uv pip install --pre -r requirements.txt
+   ```
+
+4. **Configure environment variables:**
    ```bash
    cp .env.example .env
    # Edit .env with your Azure credentials and endpoints
    ```
 
-4. **Authenticate with Azure:**
+5. **Authenticate with Azure:**
    ```bash
    az login
    ```
+
+## Run Scripts in VS Code
+
+1. Open the `agent-workshop` folder in VS Code.
+2. Select the Python interpreter from `.venv`:
+   - `Ctrl+Shift+P` → **Python: Select Interpreter** → choose `.venv`.
+3. Open the script you want to run (for example, `01-foundry-agents/01_first_agent.py`).
+4. Run it using either option:
+   - Click **Run Python File** (top-right in the editor), or
+   - Use the terminal:
+     ```bash
+     python 01-foundry-agents/01_first_agent.py
+     ```
+
+Run scripts in order within each folder (`01_`, `02_`, `03_`, etc.) as described in each session README.
 
 ## Repository Structure
 
