@@ -12,6 +12,8 @@ import os
 from pathlib import Path
 
 from azure.ai.agents import AgentsClient
+from azure.core.credentials import AzureKeyCredential
+from azure.core.pipeline.policies import AzureKeyCredentialPolicy
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
@@ -39,10 +41,19 @@ def chat(client, agent_id, thread_id, message):
 
 
 def main():
-    client = AgentsClient(
-        credential=AzureCliCredential(),
-        endpoint=os.environ["PROJECT_ENDPOINT"],
-    )
+    api_key = os.environ.get("AZURE_AI_API_KEY")
+    if api_key:
+        key_cred = AzureKeyCredential(api_key)
+        client = AgentsClient(
+            endpoint=os.environ["PROJECT_ENDPOINT"],
+            credential=key_cred,
+            authentication_policy=AzureKeyCredentialPolicy(key_cred, "api-key"),
+        )
+    else:
+        client = AgentsClient(
+            endpoint=os.environ["PROJECT_ENDPOINT"],
+            credential=AzureCliCredential(),
+        )
 
     agent = client.create_agent(
         model=os.environ["MODEL_DEPLOYMENT_NAME"],

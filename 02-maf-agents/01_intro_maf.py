@@ -23,11 +23,20 @@ load_dotenv()
 async def main():
     # Initialize the Azure OpenAI Responses client
     # This wraps the OpenAI Responses API with Azure identity + Agent Framework
-    client = AzureOpenAIResponsesClient(
-        project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-        deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
-        credential=AzureCliCredential(),
-    )
+    # Use API key if provided, otherwise fall back to Azure CLI auth
+    api_key = os.environ.get("AZURE_AI_API_KEY")
+    if api_key:
+        client = AzureOpenAIResponsesClient(
+            api_key=api_key,
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        )
+    else:
+        client = AzureOpenAIResponsesClient(
+            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+            credential=AzureCliCredential(),
+        )
 
     # Create an agent with a professional services persona
     agent = client.as_agent(

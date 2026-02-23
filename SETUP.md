@@ -5,10 +5,19 @@ Complete this checklist **before** the workshop to ensure your environment is re
 ## Azure Access
 
 - [ ] Azure subscription is active — verify with `az account show`
-- [ ] You have one of the following RBAC roles on the Foundry resource (check Azure portal → Foundry resource → Access control / IAM):
-  - **Azure AI User** (least-privilege, sufficient for development)
-  - **Azure AI Project Manager** (for managing projects)
-  - **Contributor** or **Owner** (subscription-level)
+- [ ] You have one of the following RBAC roles on the **AI Services resource** (check Azure portal → AI Services resource → Access control / IAM):
+  - **Azure AI Developer** (data-plane access — required for creating agents)
+  - **Cognitive Services Contributor** (control-plane + data-plane)
+  - **Owner** (subscription-level, includes all)
+
+> **Note:** The generic **Contributor** role alone is NOT sufficient — it only grants control-plane access. You need a **data-plane** role (Azure AI Developer or Cognitive Services Contributor) to create and use agents.
+
+### Authentication Options
+
+All workshop scripts support two authentication methods:
+
+1. **Azure CLI (default)** — Run `az login` before running scripts. No additional config needed.
+2. **API Key** — Set `AZURE_AI_API_KEY` in your `.env` file. Get the key from Azure Portal → AI Services resource → Keys and Endpoint. This bypasses RBAC entirely and is useful when CLI auth isn't available.
 
 > If you don't have an Azure account, [create a free one](https://azure.microsoft.com/free/) which includes a free trial subscription.
 

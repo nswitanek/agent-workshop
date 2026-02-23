@@ -12,3 +12,4 @@ build/
 *.swp
 *.swo
 outputs/
+_tools/

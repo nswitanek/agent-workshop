@@ -12,6 +12,8 @@ from pathlib import Path
 
 from azure.ai.agents import AgentsClient
 from azure.ai.agents.models import AgentStreamEvent
+from azure.core.credentials import AzureKeyCredential
+from azure.core.pipeline.policies import AzureKeyCredentialPolicy
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
@@ -22,10 +24,20 @@ OUTPUTS_DIR = Path(__file__).parent / "outputs"
 
 def main():
     # Connect to your Azure AI Foundry project
-    client = AgentsClient(
-        credential=AzureCliCredential(),
-        endpoint=os.environ["PROJECT_ENDPOINT"],
-    )
+    # Use API key if provided, otherwise fall back to Azure CLI auth
+    api_key = os.environ.get("AZURE_AI_API_KEY")
+    if api_key:
+        key_cred = AzureKeyCredential(api_key)
+        client = AgentsClient(
+            endpoint=os.environ["PROJECT_ENDPOINT"],
+            credential=key_cred,
+            authentication_policy=AzureKeyCredentialPolicy(key_cred, "api-key"),
+        )
+    else:
+        client = AgentsClient(
+            endpoint=os.environ["PROJECT_ENDPOINT"],
+            credential=AzureCliCredential(),
+        )
 
     # Create an agent with basic instructions
     agent = client.create_agent(
