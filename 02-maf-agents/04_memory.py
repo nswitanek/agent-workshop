@@ -110,19 +110,11 @@ def set_engagement_phase(
 
 
 async def main():
-    api_key = os.environ.get("AZURE_AI_API_KEY")
-    if api_key:
-        client = AzureOpenAIResponsesClient(
-            api_key=api_key,
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
-        )
-    else:
-        client = AzureOpenAIResponsesClient(
-            project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-            deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
-            credential=AzureCliCredential(),
-        )
+    client = AzureOpenAIResponsesClient(
+        project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+        deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        credential=AzureCliCredential(),
+    )
 
     agent = client.as_agent(
         name="MemoryAgent",

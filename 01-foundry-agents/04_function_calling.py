@@ -14,8 +14,6 @@ from pathlib import Path
 
 from azure.ai.agents import AgentsClient
 from azure.ai.agents.models import FunctionTool, ToolSet, RequiredFunctionToolCall
-from azure.core.credentials import AzureKeyCredential
-from azure.core.pipeline.policies import AzureKeyCredentialPolicy
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
@@ -95,19 +93,10 @@ TOOL_DEFINITIONS = [
 
 
 def main():
-    api_key = os.environ.get("AZURE_AI_API_KEY")
-    if api_key:
-        key_cred = AzureKeyCredential(api_key)
-        client = AgentsClient(
-            endpoint=os.environ["PROJECT_ENDPOINT"],
-            credential=key_cred,
-            authentication_policy=AzureKeyCredentialPolicy(key_cred, "api-key"),
-        )
-    else:
-        client = AgentsClient(
-            endpoint=os.environ["PROJECT_ENDPOINT"],
-            credential=AzureCliCredential(),
-        )
+    client = AgentsClient(
+        endpoint=os.environ["PROJECT_ENDPOINT"],
+        credential=AzureCliCredential(),
+    )
 
     # Create agent with function tools
     agent = client.create_agent(

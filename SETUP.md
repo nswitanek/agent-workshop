@@ -12,12 +12,9 @@ Complete this checklist **before** the workshop to ensure your environment is re
 
 > **Note:** The generic **Contributor** role alone is NOT sufficient — it only grants control-plane access. You need a **data-plane** role (Azure AI Developer or Cognitive Services Contributor) to create and use agents.
 
-### Authentication Options
+### Authentication
 
-All workshop scripts support two authentication methods:
-
-1. **Azure CLI (default)** — Run `az login` before running scripts. No additional config needed.
-2. **API Key** — Set `AZURE_AI_API_KEY` in your `.env` file. Get the key from Azure Portal → AI Services resource → Keys and Endpoint. This bypasses RBAC entirely and is useful when CLI auth isn't available.
+All workshop scripts use **Azure CLI** authentication. Run `az login` before running any scripts.
 
 > If you don't have an Azure account, [create a free one](https://azure.microsoft.com/free/) which includes a free trial subscription.
 

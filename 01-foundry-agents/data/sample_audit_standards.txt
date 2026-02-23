@@ -1,0 +1,56 @@
+Sample Audit Standards Reference
+
+This document serves as a condensed knowledge base for the workshop agent examples.
+
+Materiality
+
+Materiality determination is a critical step in audit planning (AU-C Section 320, ISA 320).
+
+- Overall materiality is typically calculated as a percentage of a chosen benchmark (e.g., 5% of pre-tax income, 0.5–1% of total revenue, or 1–2% of total assets).
+- Performance materiality is set lower than overall materiality (typically 50–75%) to reduce the risk that uncorrected and undetected misstatements exceed overall materiality.
+- Clearly trivial threshold is typically set at 3–5% of overall materiality — misstatements below this amount need not be accumulated.
+- Materiality should be reassessed as the audit progresses if new information changes the auditor's judgment.
+
+Risk Assessment
+
+Risk of material misstatement must be assessed at both the financial statement level and the assertion level (AU-C 315, AS 2110).
+
+Inherent Risk Factors
+- Nature of the entity and its industry
+- Complexity of transactions
+- Degree of estimation and judgment
+- Susceptibility to fraud
+- Recent changes in operations or accounting standards
+
+Control Risk Factors
+- Design effectiveness of internal controls
+- Operating effectiveness (tested through walkthroughs and sampling)
+- IT general controls and application controls
+- Segregation of duties
+
+Fraud Considerations
+
+Per AU-C 240 / AS 2401, auditors must:
+- Maintain professional skepticism throughout the audit
+- Discuss fraud risks with the engagement team (brainstorming session)
+- Identify and assess risks of material misstatement due to fraud
+- Respond to assessed fraud risks with appropriate audit procedures
+- Revenue recognition is presumed to be a fraud risk unless rebutted
+
+Internal Controls
+
+Understanding internal controls is required per AU-C 315 / AS 2201:
+
+1. Control environment — tone at the top, governance, ethics
+2. Risk assessment process — how management identifies risks
+3. Information systems — relevant to financial reporting
+4. Control activities — policies and procedures for control objectives
+5. Monitoring — ongoing and separate evaluations of control effectiveness
+
+Sampling
+
+Audit sampling (AU-C 530) approaches:
+- Statistical sampling — allows quantification of sampling risk
+- Non-statistical sampling — relies on auditor judgment
+- Sample size factors: expected deviation rate, tolerable deviation rate, risk of overreliance
+- Monetary unit sampling (MUS) is commonly used for substantive testing of account balances
