@@ -2,46 +2,54 @@
 04 — Advanced Memory Management
 
 Demonstrates MAF's context provider system for managing agent memory:
-  - BaseContextProvider to inject dynamic context per turn
-  - Session state for persisting engagement context across turns
-  - Using session state from tools
+  - BaseContextProvider with before_run/after_run hooks
+  - AgentSession for persisting conversation history across turns
+  - Dynamic instruction injection based on session state
 
-Concepts: BaseContextProvider, AgentSession, session state, before_run/after_run
+Concepts: BaseContextProvider, AgentSession, SessionContext, before_run/after_run
+
+Reference: https://github.com/microsoft/agent-framework/tree/main/python/samples/02-agents
 """
 
 import asyncio
 import json
 import os
-from typing import Any
+from typing import Annotated, Any
 
-from agent_framework import AgentSession, BaseContextProvider, SessionContext, tool
+from agent_framework import AgentSession, BaseContextProvider, SessionContext, SupportsAgentRun, tool
 from agent_framework.azure import AzureOpenAIResponsesClient
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 from pydantic import Field
-from typing import Annotated
 
 load_dotenv()
 
+
+# ---------------------------------------------------------------------------
+# Context Provider — injects engagement state into every agent call
+# ---------------------------------------------------------------------------
 
 class EngagementContextProvider(BaseContextProvider):
     """Injects engagement context from session state into every agent call.
 
     Tracks which client the user is discussing and provides that context
-    automatically so the agent doesn't need to be re-told.
+    automatically so the agent doesn't need to be re-told each turn.
     """
 
-    DEFAULT_SOURCE_ID = "engagement_context"
+    SOURCE_ID = "engagement_context"
+
+    def __init__(self):
+        super().__init__(source_id=self.SOURCE_ID)
 
     async def before_run(
         self,
         *,
-        agent: Any,
-        session: AgentSession | None,
+        agent: SupportsAgentRun,
+        session: AgentSession,
         context: SessionContext,
         state: dict[str, Any],
     ) -> None:
-        """Inject stored engagement context into instructions."""
+        """Inject stored engagement context into instructions before the model runs."""
         client_name = state.get("current_client")
         engagement_phase = state.get("engagement_phase", "unknown")
         risk_level = state.get("risk_level")
@@ -65,8 +73,8 @@ class EngagementContextProvider(BaseContextProvider):
     async def after_run(
         self,
         *,
-        agent: Any,
-        session: AgentSession | None,
+        agent: SupportsAgentRun,
+        session: AgentSession,
         context: SessionContext,
         state: dict[str, Any],
     ) -> None:
@@ -88,6 +96,10 @@ class EngagementContextProvider(BaseContextProvider):
                         state["risk_level"] = level.capitalize()
                         break
 
+
+# ---------------------------------------------------------------------------
+# Tool — lets the agent explicitly set the engagement phase
+# ---------------------------------------------------------------------------
 
 @tool(approval_mode="never_require")
 def set_engagement_phase(
@@ -114,36 +126,55 @@ async def main():
         tools=[set_engagement_phase],
     )
 
-    # Create a session — state persists across turns
+    # Create a session — state persists across turns via AgentSession
     session = agent.create_session()
 
+    output_lines: list[str] = []
+
     # Turn 1: Mention a client — the context provider will remember it
-    print("Turn 1:")
-    result = await agent.run(
-        "I'm starting work on the Meridian Healthcare engagement. What should I focus on first?",
-        session=session,
-    )
+    print("=" * 60)
+    print("Turn 1: Establish engagement context")
+    print("=" * 60)
+    msg1 = "I'm starting work on the Meridian Healthcare engagement. What should I focus on first?"
+    result = await agent.run(msg1, session=session)
+    print(f"User: {msg1}")
     print(f"Agent: {result}\n")
+    output_lines.append(f"### Turn 1\n**User:** {msg1}\n\n**Agent:** {result}")
 
     # Turn 2: Follow-up — the agent knows which client we're discussing
-    print("Turn 2:")
-    result = await agent.run(
-        "It's a high risk engagement. What additional procedures should we plan?",
-        session=session,
-    )
+    print("=" * 60)
+    print("Turn 2: Add risk context (agent remembers the client)")
+    print("=" * 60)
+    msg2 = "It's a high risk engagement. What additional procedures should we plan?"
+    result = await agent.run(msg2, session=session)
+    print(f"User: {msg2}")
     print(f"Agent: {result}\n")
+    output_lines.append(f"### Turn 2\n**User:** {msg2}\n\n**Agent:** {result}")
 
     # Turn 3: The agent still remembers the client and risk level
-    print("Turn 3:")
-    result = await agent.run(
-        "Summarize the engagement context we've built up so far.",
-        session=session,
-    )
+    print("=" * 60)
+    print("Turn 3: Agent demonstrates accumulated context")
+    print("=" * 60)
+    msg3 = "Summarize the engagement context we've built up so far."
+    result = await agent.run(msg3, session=session)
+    print(f"User: {msg3}")
     print(f"Agent: {result}\n")
+    output_lines.append(f"### Turn 3\n**User:** {msg3}\n\n**Agent:** {result}")
 
     # Inspect the session state
-    provider_state = session.state.get("engagement_context", {})
-    print(f"Session state: {json.dumps(provider_state, indent=2)}")
+    provider_state = session.state.get(EngagementContextProvider.SOURCE_ID, {})
+    state_dump = json.dumps(provider_state, indent=2)
+    print(f"--- Session State (provider: {EngagementContextProvider.SOURCE_ID}) ---")
+    print(state_dump)
+
+    # --- Write output ---
+    os.makedirs("02-maf-agents/outputs", exist_ok=True)
+    out_path = "02-maf-agents/outputs/04_memory.md"
+    with open(out_path, "w") as f:
+        f.write("# 04 — Memory (Context Providers + Sessions)\n\n")
+        f.write("\n\n---\n\n".join(output_lines))
+        f.write(f"\n\n## Session State\n\n```json\n{state_dump}\n```\n")
+    print(f"\n✅ Output written to {out_path}")
 
 
 if __name__ == "__main__":

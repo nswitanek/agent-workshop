@@ -1,19 +1,24 @@
 """
 03 — Building Custom Tools and Capabilities
 
-Demonstrates defining tools for MAF agents using the @tool decorator and
-class-based patterns. Tools simulate engagement data lookup and materiality
-calculation for an audit practice.
+Demonstrates defining tools for MAF agents using the @tool decorator.
+Tools simulate engagement data lookup and materiality calculation for
+an audit practice. Also shows FunctionMiddleware for logging tool calls.
 
-Concepts: @tool decorator, Annotated types, Pydantic Field, tool approval
+Concepts: @tool decorator, Annotated types, Pydantic Field, tool approval,
+          FunctionMiddleware for tool invocation logging
+
+Reference: https://github.com/microsoft/agent-framework/tree/main/python/samples/02-agents/tools
 """
 
 import asyncio
 import json
 import os
+import time
+from collections.abc import Awaitable, Callable
 from typing import Annotated
 
-from agent_framework import tool
+from agent_framework import FunctionInvocationContext, FunctionMiddleware, tool
 from agent_framework.azure import AzureOpenAIResponsesClient
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
@@ -28,7 +33,10 @@ with open(os.path.join(SCRIPT_DIR, "data", "engagement_data.json")) as f:
     ENGAGEMENTS = json.load(f)
 
 
-# --- Tool 1: Simple function tool ---
+# ---------------------------------------------------------------------------
+# Tools — defined with the MAF @tool decorator
+# ---------------------------------------------------------------------------
+
 @tool(approval_mode="never_require")
 def lookup_engagement(
     client_name: Annotated[str, Field(description="The client name to look up")],
@@ -40,7 +48,6 @@ def lookup_engagement(
     return json.dumps({"error": f"No engagement found for '{client_name}'"})
 
 
-# --- Tool 2: Calculation tool with multiple parameters ---
 @tool(approval_mode="never_require")
 def calculate_materiality(
     benchmark_amount: Annotated[float, Field(description="The benchmark amount (e.g., total revenue)")],
@@ -71,19 +78,31 @@ def calculate_materiality(
     }, indent=2)
 
 
-# --- Tool 3: Tool with approval required (for sensitive operations) ---
-@tool(approval_mode="always_require")
-def update_engagement_status(
-    client_name: Annotated[str, Field(description="The client name")],
-    new_status: Annotated[str, Field(description="New status: 'planning', 'fieldwork', 'review', 'complete'")],
-) -> str:
-    """Update the status of an audit engagement. Requires approval before execution."""
-    return json.dumps({
-        "action": "status_updated",
-        "client_name": client_name,
-        "new_status": new_status,
-        "message": f"Engagement for {client_name} updated to '{new_status}'",
-    })
+# ---------------------------------------------------------------------------
+# FunctionMiddleware — logs every tool invocation with timing
+# ---------------------------------------------------------------------------
+
+class ToolInvocationLogger(FunctionMiddleware):
+    """Logs each tool call the agent makes, including timing."""
+
+    def __init__(self):
+        self.call_log: list[dict] = []
+
+    async def process(
+        self,
+        context: FunctionInvocationContext,
+        call_next: Callable[[], Awaitable[None]],
+    ) -> None:
+        func_name = context.function.name
+        print(f"  [ToolLog] Calling: {func_name}")
+        start = time.time()
+
+        await call_next()
+
+        elapsed = time.time() - start
+        entry = {"tool": func_name, "duration_ms": round(elapsed * 1000)}
+        self.call_log.append(entry)
+        print(f"  [ToolLog] {func_name} completed in {entry['duration_ms']}ms")
 
 
 async def main():
@@ -93,6 +112,8 @@ async def main():
         credential=AzureCliCredential(),
     )
 
+    tool_logger = ToolInvocationLogger()
+
     agent = client.as_agent(
         name="EngagementToolsAgent",
         instructions=(
@@ -100,14 +121,35 @@ async def main():
             "engagement details and calculate materiality. Explain your findings clearly."
         ),
         tools=[lookup_engagement, calculate_materiality],
+        middleware=[tool_logger],  # FunctionMiddleware logs every tool call
     )
 
-    # The agent will call the tools as needed
+    # The agent will decide which tools to call and in what order
+    print("=" * 60)
+    print("Agent with Custom Tools + FunctionMiddleware Logging")
+    print("=" * 60)
+
     result = await agent.run(
         "Look up the engagement for Meridian Healthcare, then calculate materiality "
         "using their revenue as the benchmark. Assume medium risk."
     )
-    print(f"Agent: {result}")
+    print(f"\nAgent:\n{result}")
+
+    # Print summary of tool calls
+    print(f"\n--- Tool Call Summary ---")
+    for entry in tool_logger.call_log:
+        print(f"  {entry['tool']}: {entry['duration_ms']}ms")
+
+    # --- Write output ---
+    os.makedirs("02-maf-agents/outputs", exist_ok=True)
+    out_path = "02-maf-agents/outputs/03_custom_tools.md"
+    with open(out_path, "w") as f:
+        f.write("# 03 — Custom Tools\n\n")
+        f.write(f"## Agent Response\n\n{result}\n\n")
+        f.write("## Tool Call Log\n\n")
+        for entry in tool_logger.call_log:
+            f.write(f"- **{entry['tool']}**: {entry['duration_ms']}ms\n")
+    print(f"\n✅ Output written to {out_path}")
 
 
 if __name__ == "__main__":
