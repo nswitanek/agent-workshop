@@ -15,8 +15,6 @@ Hands-on workshop for building AI agents using **Microsoft Foundry** (`azure-ai-
 | 11:15 – 12:45 | [**Hands-on: Agents in Copilot Studio**](./00-copilot-studio/) |
 | | • Setting up your first agent and configuring instructions |
 | | • Adding knowledge sources and grounding |
-| | • Integrating tools (REST APIs, connectors) |
-| | • Orchestration, memory, and triggers |
 
 ### Lunch (12:45 – 1:15 PM ET)
 
@@ -24,29 +22,30 @@ Hands-on workshop for building AI agents using **Microsoft Foundry** (`azure-ai-
 
 | Time | Session |
 |------|---------|
-| 1:15 – 1:30 | [**Agents in Microsoft Foundry — Portal**](./01-foundry-agents/00_portal_agent.md) |
+| 1:15 – 2:15 | [**Hands-on: Agents in Copilot Studio (cont.)**](./00-copilot-studio/) |
+| | • Integrating tools (REST APIs, connectors) |
+| | • Orchestration, memory, and triggers |
+| 2:15 – 2:30 | **Break** |
+| 2:30 – 2:45 | [**Agents in Microsoft Foundry — Portal**](./01-foundry-agents/00_portal_agent.md) |
 | | • Creating an agent in the Azure AI Foundry portal |
 | | • Mapping portal UI to SDK concepts |
-| 1:30 – 2:15 | [**Foundry Agents in Code**](./01-foundry-agents/) |
+| 2:45 – 3:30 | [**Foundry Agents in Code**](./01-foundry-agents/) |
 | | • Creating your first Foundry agent with the SDK |
 | | • Configuring instructions and system prompts |
 | | • Adding knowledge (file search, vector stores) |
 | | • Implementing tools and function calling |
 | | • Working with memory and conversation state |
-| 2:15 – 3:30 | [**Agents with Microsoft Agent Framework**](./02-maf-agents/) |
+| 3:30 – 3:45 | [**Agents with Microsoft Agent Framework**](./02-maf-agents/) |
 | | • Introduction to MAF |
-| | • Agent orchestration patterns |
-| | • Building custom tools and capabilities |
-| | • Advanced memory management |
-| | • Implementing guardrails and safety measures |
-| 3:30 – 3:45 | **Break** |
-| 3:45 – 4:45 | **Agents Brainstorm** |
+| | • Agent orchestration patterns (other topics may be addressed in a future workshop) |
+| 3:45 – 4:00 | **Break** |
+| 4:00 – 4:45 | **Agents Brainstorm** |
 | | • Identifying agents for professional services firm workflows |
 | | • Prioritizing by business value and implementation complexity |
 | | • Guidance on getting to Version 0 |
 | 4:45 – 5:00 | **Wrap-up, Day 2 Preview, and Q&A** |
 | | • Comparing approaches: when to use each platform |
-| | • Preview of Day 2: Production readiness |
+| | • Preview of Day 2: Evaluation and production readiness |
 | | • Open discussion |
 
 ## Learning Goals
