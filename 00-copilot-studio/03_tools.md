@@ -32,34 +32,37 @@ The SEC EDGAR API provides free access to company filings and XBRL financial dat
 1. Go to your **Audit Research Assistant** agent in Copilot Studio.
 2. Navigate to the **Tools** page → select **Add a tool**.
 3. Select **New tool** → **REST API**.
-4. Upload the file [`openapi/sec-edgar.openapi.json`](./openapi/sec-edgar.openapi.json) from this repository.
-5. Review the detected endpoints:
-   - **getCompanySubmissions** — Get company filing history by CIK
-   - **getCompanyFacts** — Get all XBRL financial facts for a company
-   - **getCompanyConcept** — Get a specific financial concept over time
-   - **getXBRLFrame** — Get cross-company data for a concept and period
-6. Select **Next**.
 
-### 2. Configure Description
+### 2. Upload Specification
+1. Upload the file [`openapi/sec-edgar.openapi.json`](./openapi/sec-edgar.openapi.json) from this repository.
+2. Select **Next**.
+
+### 3. Configure Description
 
 Update the description to help the agent know when to use this tool:
 
 > Access SEC EDGAR to retrieve company filing history, financial statements, and XBRL data. Use this tool when users ask about SEC filings, 10-K reports, 10-Q reports, company financial data, revenue, assets, liabilities, or any publicly filed financial information. The tool uses CIK (Central Index Key) numbers — common CIKs include Apple (0000320193), Microsoft (0000789019), Amazon (0001018724), Google/Alphabet (0001652044).
 
 Select **Next**.
+Saving make take a few moments.
 
-### 3. Configure Authentication
+### 4. Configure Authentication
 
 1. For authentication, select **None** — the SEC EDGAR API is free and requires no authentication.
 2. Select **Next**.
 
-### 4. Select Endpoints
+### 5. Select Endpoints
+1. Review the detected endpoints:
+   - **getCompanySubmissions** — Get company filing history by CIK
+   - **getCompanyFacts** — Get all XBRL financial facts for a company
+   - **getCompanyConcept** — Get a specific financial concept over time
+   - **getXBRLFrame** — Get cross-company data for a concept and period
 
-1. Review the available operations and select all four endpoints.
-2. Select **Next** → **Create**.
-3. Select **Add and configure** to add the tool to your agent.
+2. Review the available operations and inputs/outputs associated with each endpoint individually.
+3. Review the  **Next** → **Create**.
+4. Select **Add and configure** to add the tool to your agent.
 
-### 5. Test the EDGAR Tool
+### 6. Test the EDGAR Tool
 
 Open the test panel and try these prompts:
 
