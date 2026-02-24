@@ -6,6 +6,7 @@ Build AI agents using the **Azure AI Foundry** platform and the `azure-ai-projec
 
 | # | File | Concept |
 |---|------|---------|
+| 0 | [`00_portal_agent.md`](./00_portal_agent.md) | Creating an agent in the Azure AI Foundry portal |
 | 1 | `01_first_agent.py` | Creating your first Foundry agent |
 | 2 | `02_system_prompts.py` | Configuring instructions and system prompts |
 | 3 | `03_knowledge.py` | Adding knowledge (file search, vector stores) |
