@@ -1,6 +1,6 @@
 # Exercise 0: Creating a Foundry Agent in the Portal
 
-Before diving into the SDK, let's create the **same agent from `01_first_agent.py`** using the **Azure AI Foundry portal** — no code required. This gives you a mental model of what the SDK automates.
+Before diving into the SDK, let's create the an agent using the **Azure AI Foundry portal** — no code required. This gives you a mental model of what the SDK automates.
 
 ## What You'll Build
 
@@ -9,7 +9,7 @@ An **Assurance Assistant** agent with:
 - A single-turn conversation asking about audit phases
 - The same model deployment you'll use in the code examples
 
-This mirrors exactly what `01_first_agent.py` and `02_system_prompts.py` do in code.
+This mirrors exactly what you'll do with code in `01_first_agent.py` and `02_system_prompts.py`.
 
 ## Steps
 
@@ -17,16 +17,17 @@ This mirrors exactly what `01_first_agent.py` and `02_system_prompts.py` do in c
 
 1. Navigate to [ai.azure.com](https://ai.azure.com) and sign in.
 2. Select your **project** (the one matching your `PROJECT_ENDPOINT` in `.env`).
-3. In the left sidebar, select **Agents** under the Build section.
+3. Select the **New Foundry** toggle at the top.
+4. Select the **Build** tab at the top.
 
 ### 2. Create a New Agent
 
-1. Select **+ New agent**.
+1. Select **Create agent**.
 2. Configure the agent:
 
    | Field | Value |
    |-------|-------|
-   | **Name** | `AssuranceAssistant` |
+   | **Name** | `AssuranceAssistant-<your-initials>` - names must be unique |
    | **Model** | Select your deployed model (e.g., `gpt-4o`) — this should match `MODEL_DEPLOYMENT_NAME` in your `.env` |
 
 3. In the **Instructions** field, enter the following system prompt:
@@ -35,8 +36,6 @@ This mirrors exactly what `01_first_agent.py` and `02_system_prompts.py` do in c
    You are a helpful assistant for an assurance practice at a professional
    services firm.
    ```
-
-   > This is the exact same prompt used in `01_first_agent.py`.
 
 4. Select **Save**.
 
@@ -50,14 +49,13 @@ This mirrors exactly what `01_first_agent.py` and `02_system_prompts.py` do in c
 
 2. Review the response. It should describe the standard audit phases (planning, risk assessment, fieldwork, reporting, etc.) in a professional tone.
 
-3. This is the same question sent in `01_first_agent.py` — compare the response style.
 
 ### 4. Upgrade the Instructions
 
-Now replicate what `02_system_prompts.py` does — a more detailed, guarded system prompt.
+Now create a more detailed, guarded system prompt.
 
-1. Select **Edit** on the agent (or create a new agent named `AuditAssistant-Detailed`).
-2. Replace the instructions with:
+1. Edit the agent **Instructions** (or create a new agent named `AuditAssistant-Detailed-<your-initials>`).
+2. The new instructions should read with:
 
    ```
    You are a Senior Audit Manager AI assistant at a Big Four accounting firm.
@@ -93,7 +91,7 @@ How should we assess the risk of material misstatement for a new audit client?
 
 ### 6. Explore the Portal UI
 
-While you're in the portal, note the features that map to SDK concepts:
+The Portal provides a visual interface to actions and entities that you'll interact with programmatically using the SDK:
 
 | Portal UI | SDK Equivalent | Code Example |
 |-----------|---------------|--------------|
