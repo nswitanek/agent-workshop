@@ -30,11 +30,11 @@ Triggers determine **when a topic activates**. Different trigger types suit diff
 ### 1. Review Your Existing Triggers
 
 1. Navigate to the **Topics** page for your agent.
-2. Open each topic you've created and note the trigger type:
+2. Open each Custom topic you've created and note the trigger type:
    - `Engagement Risk Summary` — should use "The agent chooses"
    - `Set Up Engagement` — should use "The agent chooses"
    - `Engagement Context Check` — should use "The agent chooses"
-3. Open the **Conversation Start** system topic — this uses an event trigger.
+3. Open the `Conversation Start` topic in the System topics tab — this uses an event trigger, **On Conversation Start**.
 
 ### 2. Create a Topic with "User says a phrase" Trigger
 
@@ -95,7 +95,7 @@ For compliance-critical workflows, you may want deterministic trigger matching.
 Create a follow-up prompt when the user goes silent.
 
 1. Create a new topic: `Inactivity Follow-Up`
-2. Change the trigger to **The user is inactive for a while**.
+2. Hover over the **Trigger** node → select the **Change trigger** icon → select **The user is inactive for a while**.
 3. In the trigger properties panel, set **Inactivity duration** to **2 minutes** (for testing; use longer in production).
 4. Add a **Message** node:
 
@@ -161,11 +161,12 @@ This trigger fires after the agent finishes executing all planned steps in gener
 Triggers can have **conditions** (when to fire) and **priorities** (which fires first when multiple match).
 
 1. Open the `Independence Confirmation` topic.
-2. Select **Edit** on the trigger node to open the properties panel.
-3. Add a **Condition:**
-   - Variable: `Global.ClientName`
-   - Operator: `is not blank`
-   - This means the independence check topic only fires if an engagement has been set up.
+2. Click the **Trigger** node to open the **On Recognized Intent** properties panel.
+3. Scroll down to the **Conditions** section and click **Add condition**.
+4. Configure the condition:
+   - **Variable:** Select `Global.ClientName`
+   - **Operator:** Select `is not blank`
+5. This means the independence check topic only fires if an engagement has been set up — the trigger phrases will be ignored unless the condition is met.
 
 4. Explore **Priority**: When multiple topics could match, priority determines which one the agent selects first. Higher priority topics are evaluated before lower priority ones.
 

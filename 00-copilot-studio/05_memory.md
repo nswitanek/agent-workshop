@@ -47,12 +47,12 @@ Build a topic that captures structured engagement information using variables.
 
 4. Add a **Question** node:
    - Question text: `What is the client name for this engagement?`
-   - **Identify as:** Free text
+   - **Identify as:** User's entire response
    - **Save response as:** Create a new variable named `ClientName`
 
 5. Add another **Question** node:
    - Question text: `What industry is the client in?`
-   - **Identify as:** Free text
+   - **Identify as:** User's entire response
    - **Save response as:** Create a variable named `ClientIndustry`
 
 6. Add another **Question** node:
