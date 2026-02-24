@@ -1,0 +1,482 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "FRED Economic Data API",
+    "description": "Access economic data from the Federal Reserve Economic Data (FRED) service maintained by the Federal Reserve Bank of St. Louis. Retrieve economic data series, observations, and search for series by keyword. Requires a free API key — register at https://fred.stlouisfed.org/docs/api/api_key.html",
+    "version": "1.0.0",
+    "contact": {
+      "name": "FRED API",
+      "url": "https://fred.stlouisfed.org/docs/api/fred/"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.stlouisfed.org",
+      "description": "FRED API Server"
+    }
+  ],
+  "security": [
+    {
+      "apiKey": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "apiKey",
+        "name": "api_key",
+        "in": "query",
+        "description": "Your FRED API key. Register for free at https://fred.stlouisfed.org/docs/api/api_key.html"
+      }
+    }
+  },
+  "paths": {
+    "/fred/series": {
+      "get": {
+        "operationId": "getSeries",
+        "summary": "Get metadata for an economic data series",
+        "description": "Retrieve metadata about a specific economic data series by its series ID. Returns the series title, frequency, units, seasonal adjustment, observation date range, and last updated timestamp. Common series IDs: GDP (Gross Domestic Product), CPIAUCSL (Consumer Price Index), FEDFUNDS (Federal Funds Rate), UNRATE (Unemployment Rate), DGS10 (10-Year Treasury Rate).",
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "query",
+            "required": true,
+            "description": "The FRED series ID. Examples: GDP, CPIAUCSL, FEDFUNDS, UNRATE, DGS10, SP500, MORTGAGE30US.",
+            "schema": {
+              "type": "string",
+              "example": "GDP"
+            }
+          },
+          {
+            "name": "file_type",
+            "in": "query",
+            "required": false,
+            "description": "Response format.",
+            "schema": {
+              "type": "string",
+              "enum": ["json", "xml"],
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Series metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "seriess": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "title": { "type": "string" },
+                          "observation_start": { "type": "string", "format": "date" },
+                          "observation_end": { "type": "string", "format": "date" },
+                          "frequency": { "type": "string" },
+                          "frequency_short": { "type": "string" },
+                          "units": { "type": "string" },
+                          "units_short": { "type": "string" },
+                          "seasonal_adjustment": { "type": "string" },
+                          "seasonal_adjustment_short": { "type": "string" },
+                          "last_updated": { "type": "string" },
+                          "popularity": { "type": "integer" },
+                          "notes": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fred/series/observations": {
+      "get": {
+        "operationId": "getSeriesObservations",
+        "summary": "Get data values for an economic data series",
+        "description": "Retrieve the actual data values (observations) for an economic data series. Returns date-value pairs for the requested period. Use observation_start and observation_end to filter the date range. Supports unit transformations (e.g., percent change) and frequency aggregation.",
+        "parameters": [
+          {
+            "name": "series_id",
+            "in": "query",
+            "required": true,
+            "description": "The FRED series ID.",
+            "schema": {
+              "type": "string",
+              "example": "FEDFUNDS"
+            }
+          },
+          {
+            "name": "file_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["json", "xml"],
+              "default": "json"
+            }
+          },
+          {
+            "name": "observation_start",
+            "in": "query",
+            "required": false,
+            "description": "Start date for observations (YYYY-MM-DD). Defaults to series start.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2020-01-01"
+            }
+          },
+          {
+            "name": "observation_end",
+            "in": "query",
+            "required": false,
+            "description": "End date for observations (YYYY-MM-DD). Defaults to series end.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2024-12-31"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of observations to return (1–100000). Default: 100000.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000,
+              "default": 100000
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "description": "Sort order for observations by date.",
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "asc"
+            }
+          },
+          {
+            "name": "units",
+            "in": "query",
+            "required": false,
+            "description": "Data value transformation. lin = no transform, chg = change, ch1 = change from year ago, pch = percent change, pc1 = percent change from year ago, pca = compounded annual rate of change, cch = continuously compounded rate of change, cca = continuously compounded annual rate of change, log = natural log.",
+            "schema": {
+              "type": "string",
+              "enum": ["lin", "chg", "ch1", "pch", "pc1", "pca", "cch", "cca", "log"],
+              "default": "lin"
+            }
+          },
+          {
+            "name": "frequency",
+            "in": "query",
+            "required": false,
+            "description": "Aggregate to a lower frequency. d = daily, w = weekly, bw = biweekly, m = monthly, q = quarterly, sa = semiannual, a = annual.",
+            "schema": {
+              "type": "string",
+              "enum": ["d", "w", "bw", "m", "q", "sa", "a"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Series observations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "realtime_start": { "type": "string", "format": "date" },
+                    "realtime_end": { "type": "string", "format": "date" },
+                    "observation_start": { "type": "string", "format": "date" },
+                    "observation_end": { "type": "string", "format": "date" },
+                    "units": { "type": "string" },
+                    "count": { "type": "integer" },
+                    "offset": { "type": "integer" },
+                    "limit": { "type": "integer" },
+                    "observations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "realtime_start": { "type": "string", "format": "date" },
+                          "realtime_end": { "type": "string", "format": "date" },
+                          "date": { "type": "string", "format": "date" },
+                          "value": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fred/series/search": {
+      "get": {
+        "operationId": "searchSeries",
+        "summary": "Search for economic data series by keywords",
+        "description": "Search for FRED economic data series that match keywords. Returns matching series with metadata. Useful for discovering available data when you don't know the exact series ID. For example, search for 'inflation' to find CPI-related series, or 'unemployment' to find labor market data.",
+        "parameters": [
+          {
+            "name": "search_text",
+            "in": "query",
+            "required": true,
+            "description": "Keywords to search for in series titles and descriptions.",
+            "schema": {
+              "type": "string",
+              "example": "federal funds rate"
+            }
+          },
+          {
+            "name": "file_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["json", "xml"],
+              "default": "json"
+            }
+          },
+          {
+            "name": "search_type",
+            "in": "query",
+            "required": false,
+            "description": "Type of search to perform.",
+            "schema": {
+              "type": "string",
+              "enum": ["full_text", "series_id"],
+              "default": "full_text"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Maximum number of results (1–1000).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 1000
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "Number of results to skip for pagination.",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "required": false,
+            "description": "Sort results by this field.",
+            "schema": {
+              "type": "string",
+              "enum": ["search_rank", "series_id", "title", "units", "frequency", "seasonal_adjustment", "realtime_start", "realtime_end", "last_updated", "observation_start", "observation_end", "popularity", "group_popularity"],
+              "default": "search_rank"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "desc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching series",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": { "type": "integer" },
+                    "offset": { "type": "integer" },
+                    "limit": { "type": "integer" },
+                    "seriess": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "title": { "type": "string" },
+                          "observation_start": { "type": "string", "format": "date" },
+                          "observation_end": { "type": "string", "format": "date" },
+                          "frequency": { "type": "string" },
+                          "units": { "type": "string" },
+                          "seasonal_adjustment": { "type": "string" },
+                          "last_updated": { "type": "string" },
+                          "popularity": { "type": "integer" },
+                          "notes": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fred/category": {
+      "get": {
+        "operationId": "getCategory",
+        "summary": "Get a FRED data category",
+        "description": "Retrieve information about a FRED data category. Categories organize series hierarchically. The root category ID is 0. Useful audit-relevant categories include: 32991 (Financial Indicators), 10 (Population & Employment), 18 (National Accounts).",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": true,
+            "description": "The FRED category ID.",
+            "schema": {
+              "type": "integer",
+              "example": 32991
+            }
+          },
+          {
+            "name": "file_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["json", "xml"],
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "categories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "integer" },
+                          "name": { "type": "string" },
+                          "parent_id": { "type": "integer" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fred/category/series": {
+      "get": {
+        "operationId": "getCategorySeries",
+        "summary": "Get all series in a FRED category",
+        "description": "Retrieve all economic data series within a specific FRED category. Returns series metadata including IDs, titles, frequencies, and units. Use this to discover available data within a topic area.",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": true,
+            "description": "The FRED category ID.",
+            "schema": {
+              "type": "integer",
+              "example": 32991
+            }
+          },
+          {
+            "name": "file_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["json", "xml"],
+              "default": "json"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 1000
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Series in the category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": { "type": "integer" },
+                    "seriess": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "title": { "type": "string" },
+                          "observation_start": { "type": "string", "format": "date" },
+                          "observation_end": { "type": "string", "format": "date" },
+                          "frequency": { "type": "string" },
+                          "units": { "type": "string" },
+                          "popularity": { "type": "integer" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

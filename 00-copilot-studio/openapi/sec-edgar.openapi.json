@@ -1,0 +1,346 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SEC EDGAR Data API",
+    "description": "Access SEC EDGAR company filings, XBRL financial data, and submission history. This API provides real-time access to structured financial data from SEC filings. No authentication required — include a descriptive User-Agent header per SEC policy.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "SEC EDGAR",
+      "url": "https://www.sec.gov/edgar/sec-api-documentation"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://data.sec.gov",
+      "description": "SEC EDGAR Data API"
+    }
+  ],
+  "paths": {
+    "/submissions/CIK{cik}.json": {
+      "get": {
+        "operationId": "getCompanySubmissions",
+        "summary": "Get company filing history",
+        "description": "Retrieve the filing history and metadata for a company by its 10-digit CIK number. Returns company name, ticker symbols, stock exchanges, SIC code, and at least one year of recent filings (up to 1,000). Filings include form type, filing date, accession number, and primary document URL.",
+        "parameters": [
+          {
+            "name": "cik",
+            "in": "path",
+            "required": true,
+            "description": "The entity's 10-digit Central Index Key (CIK), with leading zeros. For example, Apple Inc. is 0000320193.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{10}$",
+              "example": "0000320193"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Company submission history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cik": {
+                      "type": "string",
+                      "description": "Central Index Key"
+                    },
+                    "entityType": {
+                      "type": "string",
+                      "description": "Entity type (e.g., operating)"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Current company name"
+                    },
+                    "tickers": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "Ticker symbols"
+                    },
+                    "exchanges": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "Stock exchanges"
+                    },
+                    "sic": {
+                      "type": "string",
+                      "description": "Standard Industrial Classification code"
+                    },
+                    "sicDescription": {
+                      "type": "string",
+                      "description": "SIC code description"
+                    },
+                    "filings": {
+                      "type": "object",
+                      "description": "Filing history data",
+                      "properties": {
+                        "recent": {
+                          "type": "object",
+                          "description": "Recent filings in columnar format",
+                          "properties": {
+                            "accessionNumber": {
+                              "type": "array",
+                              "items": { "type": "string" }
+                            },
+                            "filingDate": {
+                              "type": "array",
+                              "items": { "type": "string" }
+                            },
+                            "form": {
+                              "type": "array",
+                              "items": { "type": "string" }
+                            },
+                            "primaryDocument": {
+                              "type": "array",
+                              "items": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/xbrl/companyfacts/CIK{cik}.json": {
+      "get": {
+        "operationId": "getCompanyFacts",
+        "summary": "Get all XBRL financial facts for a company",
+        "description": "Retrieve all XBRL-tagged financial data for a company in a single call. Returns all reported concepts (e.g., Revenue, Assets, NetIncome) organized by taxonomy (us-gaap, ifrs, dei) with values for each reporting period. Useful for financial analysis and ratio computation.",
+        "parameters": [
+          {
+            "name": "cik",
+            "in": "path",
+            "required": true,
+            "description": "The entity's 10-digit Central Index Key (CIK), with leading zeros.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{10}$",
+              "example": "0000320193"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All XBRL financial facts for the company",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cik": { "type": "integer" },
+                    "entityName": { "type": "string" },
+                    "facts": {
+                      "type": "object",
+                      "description": "Financial facts organized by taxonomy",
+                      "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "object",
+                          "properties": {
+                            "label": { "type": "string" },
+                            "description": { "type": "string" },
+                            "units": {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "val": { "type": "number" },
+                                    "end": { "type": "string" },
+                                    "start": { "type": "string" },
+                                    "fy": { "type": "integer" },
+                                    "fp": { "type": "string" },
+                                    "form": { "type": "string" },
+                                    "filed": { "type": "string" }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/xbrl/companyconcept/CIK{cik}/{taxonomy}/{tag}.json": {
+      "get": {
+        "operationId": "getCompanyConcept",
+        "summary": "Get a specific financial concept for a company",
+        "description": "Retrieve all disclosures for a single XBRL concept (e.g., us-gaap/Revenue, us-gaap/Assets) for a specific company. Returns historical values across all filings, separated by unit of measure. Useful for tracking a specific metric over time.",
+        "parameters": [
+          {
+            "name": "cik",
+            "in": "path",
+            "required": true,
+            "description": "The entity's 10-digit CIK with leading zeros.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{10}$",
+              "example": "0000320193"
+            }
+          },
+          {
+            "name": "taxonomy",
+            "in": "path",
+            "required": true,
+            "description": "The XBRL taxonomy (e.g., us-gaap, ifrs-full, dei, srt).",
+            "schema": {
+              "type": "string",
+              "enum": ["us-gaap", "ifrs-full", "dei", "srt"],
+              "example": "us-gaap"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "description": "The XBRL concept tag name (e.g., Revenue, Assets, NetIncomeLoss, AccountsPayableCurrent).",
+            "schema": {
+              "type": "string",
+              "example": "Revenue"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical values for the specified concept",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cik": { "type": "integer" },
+                    "taxonomy": { "type": "string" },
+                    "tag": { "type": "string" },
+                    "label": { "type": "string" },
+                    "description": { "type": "string" },
+                    "entityName": { "type": "string" },
+                    "units": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "val": { "type": "number" },
+                            "end": { "type": "string" },
+                            "start": { "type": "string" },
+                            "fy": { "type": "integer" },
+                            "fp": { "type": "string" },
+                            "form": { "type": "string" },
+                            "filed": { "type": "string" },
+                            "accn": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/xbrl/frames/{taxonomy}/{tag}/{units}/{frame}.json": {
+      "get": {
+        "operationId": "getXBRLFrame",
+        "summary": "Get cross-company data for a concept and period",
+        "description": "Retrieve a single fact per reporting entity for a specific XBRL concept, unit, and calendar period. Useful for cross-company comparison (e.g., all companies' revenue for a given year or quarter). Period format: CY2023 (annual), CY2023Q1 (quarterly), CY2023Q1I (instantaneous).",
+        "parameters": [
+          {
+            "name": "taxonomy",
+            "in": "path",
+            "required": true,
+            "description": "The XBRL taxonomy.",
+            "schema": {
+              "type": "string",
+              "enum": ["us-gaap", "ifrs-full", "dei", "srt"],
+              "example": "us-gaap"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "path",
+            "required": true,
+            "description": "The XBRL concept tag name.",
+            "schema": {
+              "type": "string",
+              "example": "AccountsPayableCurrent"
+            }
+          },
+          {
+            "name": "units",
+            "in": "path",
+            "required": true,
+            "description": "Unit of measure (e.g., USD, shares, pure). For compound units use numerator-per-denominator (e.g., USD-per-shares).",
+            "schema": {
+              "type": "string",
+              "example": "USD"
+            }
+          },
+          {
+            "name": "frame",
+            "in": "path",
+            "required": true,
+            "description": "Calendar period. CY2023 for annual, CY2023Q1 for quarterly, CY2023Q1I for instantaneous.",
+            "schema": {
+              "type": "string",
+              "pattern": "^CY[0-9]{4}(Q[1-4]I?)?$",
+              "example": "CY2023Q1I"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cross-company data for the specified concept and period",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "taxonomy": { "type": "string" },
+                    "tag": { "type": "string" },
+                    "ccp": { "type": "string" },
+                    "uom": { "type": "string" },
+                    "label": { "type": "string" },
+                    "description": { "type": "string" },
+                    "pts": { "type": "integer", "description": "Number of data points" },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "accn": { "type": "string" },
+                          "cik": { "type": "integer" },
+                          "entityName": { "type": "string" },
+                          "loc": { "type": "string" },
+                          "end": { "type": "string" },
+                          "val": { "type": "number" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

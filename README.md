@@ -17,7 +17,7 @@ Hands-on workshop for building AI agents using **Microsoft Foundry** (`azure-ai-
 | | • Mediated brainstorm to identify agents for professional services firm workflows |
 | | • Prioritizing potential agents by business value and implementation complexity |
 | | • Guidance on getting to Version 0 |
-| 10:00 – 11:30 | **Hands-on: Building Agents in Copilot Studio** |
+| 10:00 – 11:30 | [**Hands-on: Building Agents in Copilot Studio**](./00-copilot-studio/) |
 | | • Setting up your first agent |
 | | • Working with instructions and conversation design |
 | | • Adding knowledge sources and grounding |
@@ -120,9 +120,10 @@ Run scripts in order within each folder (`01_`, `02_`, `03_`, etc.) as described
 ## Repository Structure
 
 ```
-01-foundry-agents/     # Session 1: Building Agents in Microsoft Foundry
-02-maf-agents/         # Session 2: Code-First Agents with MAF
-03-capstone/           # Capstone: Multi-Agent Risk-Based Audit Planning
+00-copilot-studio/         # Session: Building Agents in Copilot Studio
+01-foundry-agents/         # Session 1: Building Agents in Microsoft Foundry
+02-maf-agents/             # Session 2: Code-First Agents with MAF
+03-capstone/               # Capstone: Multi-Agent Risk-Based Audit Planning
 ```
 
 Each folder contains a README with detailed instructions and numbered Python scripts to run in order.
