@@ -1,6 +1,6 @@
 # Exercise 3: Adding Tools — REST API Connections
 
-In this exercise, you'll connect your Audit Research Assistant to two public REST APIs using OpenAPI specifications, giving it the ability to **look up real SEC filings** and **retrieve live economic data**.
+In this exercise, you'll connect your Audit Research Assistant to three public REST APIs using OpenAPI specifications, giving it the ability to **search for companies by name**, **look up real SEC filings**, and **retrieve live economic data**.
 
 ## What You'll Learn
 
@@ -20,12 +20,13 @@ Copilot Studio supports REST API tools via **OpenAPI specifications** — you up
 
 - A **FRED API key** (free) — register at [fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html)
 - The OpenAPI spec files from this repository:
-  - [`openapi/sec-edgar.openapi.json`](./openapi/sec-edgar.openapi.json)
-  - [`openapi/fred-api.openapi.json`](./openapi/fred-api.openapi.json)
+  - [`openapi/sec-edgar.openapi.json`](./openapi/sec-edgar.openapi.json) — company filings and XBRL data
+  - [`openapi/sec-edgar-search.openapi.json`](./openapi/sec-edgar-search.openapi.json) — company CIK lookup
+  - [`openapi/fred-api.openapi.json`](./openapi/fred-api.openapi.json) — economic indicators
 
-## Part A: SEC EDGAR API (No Authentication)
+## Part A: SEC EDGAR Data API (No Authentication)
 
-The SEC EDGAR API provides free access to company filings and XBRL financial data. No API key is required.
+The SEC EDGAR Data API provides free access to company filings and XBRL financial data. No API key is required. Its endpoints require a CIK (Central Index Key) number — in Part B you'll add a search tool that can look up CIKs by company name.
 
 ### 1. Add the EDGAR API Tool
 
@@ -73,11 +74,59 @@ Open the test panel and try these prompts:
 | `Show me Amazon's net income over the last 5 years` | Calls getCompanyConcept for NetIncomeLoss |
 | `Compare accounts payable across all companies for Q1 2023` | Calls getXBRLFrame |
 
-> **Note:** The agent may ask you for the CIK number if it doesn't know it. You can update the tool description with additional CIK mappings or instruct the agent in its system instructions to look up CIKs.
+> **Note:** The agent may not know the CIK for every company. In Part B, you'll add a search tool that lets the agent look up CIKs autonomously.
 
 ---
 
-## Part B: FRED API (API Key Authentication)
+## Part B: SEC EDGAR Search API (Company Lookup)
+
+The EDGAR Data API endpoints require a CIK number, but users typically know company names, not CIKs. The EDGAR Search API solves this — it lets the agent search by company name or ticker to find the CIK, then use that CIK with the Data API.
+
+### 1. Add the EDGAR Search Tool
+
+1. Navigate to the **Tools** page → select **Add a tool**.
+2. Select **New tool** → **REST API**.
+
+### 2. Upload Specification
+
+1. Upload the file [`openapi/sec-edgar-search.openapi.json`](./openapi/sec-edgar-search.openapi.json) from this repository.
+2. Select **Next**.
+
+### 3. Configure Description
+
+Update the description to help the agent understand this tool's role in the CIK lookup workflow:
+
+> Search SEC EDGAR filings by company name or ticker symbol to find CIK (Central Index Key) numbers. Use this tool FIRST when a user asks about a company's SEC filings or financial data and you don't already know the CIK. Search for the company name, extract the CIK from the entity_filter aggregation results, then use the SEC EDGAR Data API tool with that CIK to retrieve detailed filings and financial data.
+
+Select **Next**.
+
+### 4. Configure Authentication
+
+1. For authentication, select **None** — the SEC EDGAR Search API is free and requires no authentication.
+2. Select **Next**.
+
+### 5. Select Endpoints and Create
+
+1. Review the single detected endpoint:
+   - **searchFilings** — Search EDGAR filings by company name, ticker, form type, or keywords
+2. Select **Next** → **Create**.
+3. Select **Add and configure** to add the tool to your agent.
+
+### 6. Test the EDGAR Search Tool
+
+Open the test panel and try these prompts:
+
+| Prompt | Expected Behavior |
+|--------|-------------------|
+| `What is the CIK number for Tesla?` | Calls searchFilings, returns CIK from entity_filter aggregation |
+| `Look up the CIK for JPMorgan Chase` | Calls searchFilings, extracts CIK 0000019617 |
+| `Find recent 10-K filings for Nvidia` | Calls searchFilings with q="Nvidia" and forms="10-K" |
+
+> **Tip:** With both EDGAR tools connected, try a chained prompt like *"What was Tesla's revenue last year?"* — the agent should first search for Tesla's CIK, then call the Data API to retrieve revenue data.
+
+---
+
+## Part C: FRED API (API Key Authentication)
 
 The FRED API from the Federal Reserve Bank of St. Louis provides economic data — interest rates, inflation, GDP, unemployment, and thousands of other indicators.
 
@@ -134,21 +183,23 @@ When prompted for authentication, enter your FRED API key.
 
 ---
 
-## Part C: Using Both Tools Together
+## Part D: Using All Tools Together
 
-Now that both tools are connected, test prompts that require the agent to **reason about which tool to use** — or use both:
+Now that all three tools are connected, test prompts that require the agent to **reason about which tool(s) to use** — and chain calls across tools:
 
 | Prompt | Expected Tool(s) |
 |--------|-------------------|
 | `I'm assessing going-concern risk for a retail company. What's the current economic outlook?` | FRED (GDP, unemployment, consumer sentiment) |
-| `Look up Apple's latest 10-K and tell me their revenue trend` | EDGAR (companyfacts or companyconcept) |
+| `Look up Apple's latest 10-K and tell me their revenue trend` | EDGAR Data (getCompanyFacts or getCompanyConcept) |
+| `What were Nvidia's total assets in their latest filing?` | EDGAR Search (CIK lookup) → EDGAR Data (getCompanyFacts) |
 | `For an audit of a bank, what interest rate data should I consider?` | FRED (FEDFUNDS, DGS10, MORTGAGE30US) |
-| `Pull Apple's revenue data and compare it against GDP growth` | Both EDGAR and FRED |
+| `Pull Tesla's revenue data and compare it against GDP growth` | EDGAR Search → EDGAR Data + FRED |
 
 ## Key Takeaways
 
 - **OpenAPI specs** are the bridge between your agent and external APIs — invest in clear descriptions
 - **Tool descriptions** are critical — the agent uses them to decide *when* to call a tool
+- **Tool chaining** — descriptive tool descriptions enable the agent to chain calls across tools (e.g., search for CIK → retrieve filings)
 - **Authentication** can be per-user (API key prompt) or maker-provided (shared credentials)
 - The agent **automatically decides** which tool to call based on the user's question (with generative orchestration)
 - Copilot Studio auto-converts OpenAPI 3.0 specs to Swagger 2.0 internally

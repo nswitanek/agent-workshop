@@ -1,0 +1,224 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SEC EDGAR Full-Text Search API",
+    "description": "Search SEC EDGAR filings by company name, form type, and date range. Use this tool to look up a company's CIK (Central Index Key) number when you only know the company name or ticker symbol. The CIK can then be used with the SEC EDGAR Data API to retrieve filings and financial data. No authentication required — include a descriptive User-Agent header per SEC policy.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "SEC EDGAR",
+      "url": "https://www.sec.gov/edgar/sec-api-documentation"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://efts.sec.gov",
+      "description": "SEC EDGAR Full-Text Search System (EFTS)"
+    }
+  ],
+  "paths": {
+    "/LATEST/search-index": {
+      "get": {
+        "operationId": "searchFilings",
+        "summary": "Search EDGAR filings by company name or keywords",
+        "description": "Search SEC EDGAR filings by company name, ticker, form type, and date range. Returns matching filings along with an entity_filter aggregation that lists matching companies with their CIK numbers and ticker symbols. Use this to look up a company's CIK number from its name or ticker — the CIK is needed by the SEC EDGAR Data API endpoints (getCompanySubmissions, getCompanyFacts, etc.). To look up a company CIK, search with the company name in quotes and set size to 0 to get only the entity aggregation without individual filing results.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "description": "Search query. Use double quotes for exact phrase matching (e.g., '\"apple inc\"'). To search by company name for CIK lookup, put the company name in quotes.",
+            "schema": {
+              "type": "string",
+              "example": "\"apple inc\""
+            }
+          },
+          {
+            "name": "forms",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated list of SEC form types to filter by (e.g., '10-K', '10-Q', '10-K,10-Q,8-K'). Common forms: 10-K (annual report), 10-Q (quarterly report), 8-K (current report), DEF 14A (proxy statement).",
+            "schema": {
+              "type": "string",
+              "example": "10-K"
+            }
+          },
+          {
+            "name": "dateRange",
+            "in": "query",
+            "required": false,
+            "description": "Date range filter. Use 'custom' with startdt and enddt parameters for a specific range.",
+            "schema": {
+              "type": "string",
+              "enum": ["custom", "30d", "1y", "5y"],
+              "example": "custom"
+            }
+          },
+          {
+            "name": "startdt",
+            "in": "query",
+            "required": false,
+            "description": "Start date for custom date range filter (YYYY-MM-DD format). Requires dateRange=custom.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2024-01-01"
+            }
+          },
+          {
+            "name": "enddt",
+            "in": "query",
+            "required": false,
+            "description": "End date for custom date range filter (YYYY-MM-DD format). Requires dateRange=custom.",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2025-12-31"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "description": "Starting index for pagination of filing results. Use 0 for the first page.",
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "example": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "description": "Number of filing results to return. Set to 0 to get only the entity aggregation (useful for CIK lookups). Maximum 100.",
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 0,
+              "maximum": 100,
+              "example": 5
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results with filing hits and entity aggregation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hits": {
+                      "type": "object",
+                      "description": "Filing search results",
+                      "properties": {
+                        "total": {
+                          "type": "object",
+                          "description": "Total number of matching filings",
+                          "properties": {
+                            "value": {
+                              "type": "integer",
+                              "description": "Count of matching filings"
+                            }
+                          }
+                        },
+                        "hits": {
+                          "type": "array",
+                          "description": "Array of matching filing documents. Empty when size=0.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "_source": {
+                                "type": "object",
+                                "description": "Filing document metadata",
+                                "properties": {
+                                  "ciks": {
+                                    "type": "array",
+                                    "description": "CIK numbers of the filing entity (10-digit, zero-padded)",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "display_names": {
+                                    "type": "array",
+                                    "description": "Company display names with ticker symbol and CIK, e.g., 'Apple Inc. (AAPL) (CIK 0000320193)'",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "form": {
+                                    "type": "string",
+                                    "description": "SEC form type (e.g., 10-K, 10-Q, 8-K)"
+                                  },
+                                  "file_date": {
+                                    "type": "string",
+                                    "description": "Filing date in YYYY-MM-DD format"
+                                  },
+                                  "sics": {
+                                    "type": "array",
+                                    "description": "Standard Industrial Classification (SIC) codes for the company's industry",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "biz_locations": {
+                                    "type": "array",
+                                    "description": "Business location (city, state) of the filing entity",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "period_ending": {
+                                    "type": "string",
+                                    "description": "Period end date for the filing"
+                                  },
+                                  "file_type": {
+                                    "type": "string",
+                                    "description": "Specific file type within the filing (e.g., 10-K, EX-21.1)"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "aggregations": {
+                      "type": "object",
+                      "description": "Aggregated data from search results — most useful for CIK lookups",
+                      "properties": {
+                        "entity_filter": {
+                          "type": "object",
+                          "description": "Aggregation of unique entities (companies) matching the search. Each bucket contains the company name, ticker, and CIK number.",
+                          "properties": {
+                            "buckets": {
+                              "type": "array",
+                              "description": "List of matching companies, sorted by number of matching filings. Each key contains the company name, ticker symbol, and CIK in the format: 'Company Name (TICKER) (CIK 0000000000)'",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "description": "Company display name with ticker and CIK, e.g., 'Apple Inc. (AAPL) (CIK 0000320193)'. Parse the CIK number from this string to use with other EDGAR API endpoints."
+                                  },
+                                  "doc_count": {
+                                    "type": "integer",
+                                    "description": "Number of filings matching the search for this entity"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
