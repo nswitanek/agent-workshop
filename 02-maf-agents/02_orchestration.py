@@ -265,7 +265,7 @@ async def main():
     # --- Write output to markdown ---
     os.makedirs("02-maf-agents/outputs", exist_ok=True)
     out_path = "02-maf-agents/outputs/02_orchestration.md"
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write("# 02 — Orchestration Patterns\n\n")
         f.write("\n\n".join(output_parts))
     print(f"\n✅ Output written to {out_path}")

@@ -175,7 +175,7 @@ async def main():
     # --- Write output ---
     os.makedirs("02-maf-agents/outputs", exist_ok=True)
     out_path = "02-maf-agents/outputs/04_memory.md"
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write("# 04 — Memory (Context Providers + Sessions)\n\n")
         f.write("\n\n---\n\n".join(output_lines))
         f.write(f"\n\n## Session State\n\n```json\n{state_dump}\n```\n")

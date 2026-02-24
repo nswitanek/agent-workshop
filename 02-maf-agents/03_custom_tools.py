@@ -148,7 +148,7 @@ async def main():
     # --- Write output ---
     os.makedirs("02-maf-agents/outputs", exist_ok=True)
     out_path = "02-maf-agents/outputs/03_custom_tools.md"
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write("# 03 — Custom Tools\n\n")
         f.write(f"## Agent Response\n\n{result}\n\n")
         f.write("## Tool Call Log\n\n")

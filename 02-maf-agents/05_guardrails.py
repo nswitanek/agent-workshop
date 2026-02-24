@@ -235,7 +235,7 @@ async def main():
     # --- Write output ---
     os.makedirs("02-maf-agents/outputs", exist_ok=True)
     out_path = "02-maf-agents/outputs/05_guardrails.md"
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write("# 05 — Guardrails (AgentMiddleware)\n\n")
         f.write("\n\n".join(output_lines))
         f.write("\n\n## Audit Log\n\n")

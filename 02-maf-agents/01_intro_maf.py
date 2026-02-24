@@ -95,7 +95,7 @@ async def main():
     # --- Write output ---
     os.makedirs("02-maf-agents/outputs", exist_ok=True)
     out_path = "02-maf-agents/outputs/01_intro_maf.md"
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write("# 01 — Introduction to MAF\n\n")
         f.write("\n\n".join(output_lines))
     print(f"✅ Output written to {out_path}")

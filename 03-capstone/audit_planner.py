@@ -280,7 +280,7 @@ async def main():
     os.makedirs(os.path.join(script_dir, "outputs"), exist_ok=True)
     out_path = os.path.join(script_dir, "outputs", "audit_plan.md")
 
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write("# Capstone: Risk-Based Audit Plan — Apex Financial Group\n\n")
         f.write("\n\n---\n\n".join(output_parts))
         f.write("\n\n---\n\n## Planning Metrics\n\n")
