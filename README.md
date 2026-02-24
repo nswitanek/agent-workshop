@@ -75,24 +75,44 @@ Hands-on workshop for building AI agents using **Microsoft Foundry** (`azure-ai-
    ```
 
 2. **Install `uv` (if needed):**
-   ```bash
-   # macOS / Linux
-   curl -LsSf https://astral.sh/uv/install.sh | sh
 
-   # Windows (PowerShell)
+   macOS / Linux:
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+   Windows (PowerShell):
+   ```powershell
    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
 
-3. **Create a virtual environment and install dependencies with `uv`:**
+3. **Create a virtual environment and install dependencies:**
+
+   macOS / Linux:
    ```bash
    uv venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   source .venv/bin/activate
+   uv pip install --pre -r requirements.txt
+   ```
+
+   Windows (PowerShell):
+   ```powershell
+   uv venv
+   .venv\Scripts\activate
    uv pip install --pre -r requirements.txt
    ```
 
 4. **Configure environment variables:**
+
+   macOS / Linux:
    ```bash
    cp .env.example .env
+   # Edit .env with your Azure credentials and endpoints
+   ```
+
+   Windows (PowerShell):
+   ```powershell
+   copy .env.example .env
    # Edit .env with your Azure credentials and endpoints
    ```
 

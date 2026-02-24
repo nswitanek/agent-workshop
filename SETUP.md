@@ -48,19 +48,27 @@ Ensure the following are provisioned in your Azure subscription:
 
 Run these commands to confirm your environment is ready:
 
+macOS / Linux:
 ```bash
-# Check Python
-python --version        # Should be ≥ 3.10
-
-# Check Azure CLI and login
+python3 --version        # Should be ≥ 3.10
 az --version
 az login
-az account show         # Should show your active subscription
-
-# Check Git
+az account show          # Should show your active subscription
 git --version
 
-# Check RBAC role (replace <resource-group> and <foundry-resource>)
+# Check RBAC role (replace <resource-group>)
+az role assignment list --resource-group <resource-group> --query "[].roleDefinitionName" -o tsv
+```
+
+Windows (PowerShell):
+```powershell
+python --version         # Should be ≥ 3.10
+az --version
+az login
+az account show          # Should show your active subscription
+git --version
+
+# Check RBAC role (replace <resource-group>)
 az role assignment list --resource-group <resource-group> --query "[].roleDefinitionName" -o tsv
 ```
 

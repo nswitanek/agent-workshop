@@ -23,40 +23,35 @@ Copilot Studio indexes public website content and uses it to ground the agent's 
 1. Go to your **Audit Research Assistant** agent in Copilot Studio.
 2. Navigate to the **Knowledge** page (left sidebar), or on the **Overview** page select **Add knowledge** in the Knowledge section.
 
-### 2. Add IAASB Standards Website
+### 2. Add Knowledge Websites
 
-The [International Auditing and Assurance Standards Board (IAASB)](https://www.iaasb.org) publishes International Standards on Auditing (ISAs) used globally.
-
-1. Select **Add knowledge** → **Public websites**.
-2. Enter the URL: `https://www.iaasb.org/standards`
-3. Select **Add**, then select **Add to agent**.
-4. Wait for the indexing to complete (may take a moment).
-
-### 3. Add PCAOB Standards Website
-
-The [Public Company Accounting Oversight Board (PCAOB)](https://pcaobus.org) sets auditing standards for public company audits in the United States.
+We'll add four authoritative audit and accounting websites as knowledge sources.
 
 1. Select **Add knowledge** → **Public websites**.
-2. Enter the URL: `https://pcaobus.org/oversight/standards`
-3. Select **Add**, then select **Add to agent**.
+2. Enter each of the following URLs, selecting **Add** after each one:
 
-### 4. Add IFAC Knowledge Gateway
+   | Source | URL |
+   |--------|-----|
+   | **IAASB Standards** — International Standards on Auditing (ISAs) | `https://www.iaasb.org/standards` |
+   | **PCAOB Standards** — US public company auditing standards | `https://pcaobus.org/oversight/standards` |
+   | **IFAC Knowledge Gateway** — International accounting & auditing resources | `https://www.ifac.org/knowledge-gateway` |
+   | **EY Insights** — Thought leadership on audit, assurance & accounting | `https://www.ey.com/en_us/insights` |
 
-The [International Federation of Accountants (IFAC)](https://www.ifac.org) provides resources on international accounting and auditing standards.
+3. Once all four URLs have been added, select **Add to agent**.
+4. Wait for indexing to complete (may take a moment).
 
-1. Select **Add knowledge** → **Public websites**.
-2. Enter the URL: `https://www.ifac.org/knowledge-gateway`
-3. Select **Add**, then select **Add to agent**.
+### 3. Enable or Disable Web Search
 
-### 5. Add EY Insights
+In addition to the specific websites you added above, Copilot Studio can also search the **public web** (via Bing) to answer questions that fall outside your configured knowledge sources.
 
-[EY Insights](https://www.ey.com/en_us/insights) publishes thought leadership on audit, assurance, and accounting topics.
+1. Go to **Settings** (gear icon, top right) → **Generative AI**.
+2. Look for the **Web content** or **Search public websites** toggle.
+3. When **enabled**, the agent can supplement its responses with results from the broader web — useful for general questions, but may return content outside your curated sources.
+4. When **disabled**, the agent only uses the specific knowledge sources you've added (and the LLM's training data). This gives you tighter control over what content the agent references.
 
-1. Select **Add knowledge** → **Public websites**.
-2. Enter the URL: `https://www.ey.com/en_us/insights`
-3. Select **Add**, then select **Add to agent**.
+> **Recommendation for this workshop:** Leave web search **disabled** so you can clearly see when responses are grounded in your configured knowledge sources vs. the LLM's general training data.
 
-### 6. Test Knowledge Grounding
+### 4. Test Knowledge Grounding
 
 Now test whether the agent uses these knowledge sources to ground its responses.
 
@@ -72,7 +67,7 @@ Now test whether the agent uses these knowledge sources to ground its responses.
 
 3. Look for **citation indicators** — Copilot Studio may show source references in responses.
 
-### 7. Compare With and Without Knowledge
+### 5. Compare With and Without Knowledge
 
 To see the difference knowledge sources make:
 
