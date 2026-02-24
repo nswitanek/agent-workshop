@@ -30,7 +30,7 @@ Orchestration is *how the agent decides what to do* when it receives a user mess
 New agents default to **generative orchestration**. Verify this:
 
 1. Go to your **Audit Research Assistant** agent.
-2. Navigate to **Settings** (gear icon) → **Generative AI**.
+2. Navigate to **Settings** (button at the upper right).
 3. Confirm that **Generative orchestration** is enabled.
 
 ### 2. Observe Generative Orchestration in Action
@@ -54,7 +54,13 @@ With generative orchestration enabled, the agent dynamically decides how to resp
 
 5. The agent should search **knowledge** (IAASB website) for ISA 315 content and call the **FRED tool** for GDP data.
 
-### 3. Create a Topic for Generative Orchestration
+6. Now try a two-sources-of-knowledge query:
+
+   > What does ISA 315 say about understanding the economic environment, and how does that interact with EY insights?
+
+7. The agent should search **knowledge** (IAASB website) for ISA 315 content and also search the EY Insights **knowledge**.
+
+### 3a. Create a Topic for Generative Orchestration - Tools
 
 In generative mode, topics are selected based on their **name and description** — not trigger phrases.
 
@@ -82,7 +88,7 @@ In generative mode, topics are selected based on their **name and description** 
 
 9. **Test it:** Ask `Give me a risk summary for Apple` — the agent should select this topic based on the description match.
 
-### 4. Switch to Classic Orchestration
+### 4a. Switch to Classic Orchestration — Tools
 
 Now switch to classic mode to see the difference:
 
@@ -99,7 +105,7 @@ Now switch to classic mode to see the difference:
 
 6. **Save** the topic.
 
-### 5. Compare Behavior in Classic Mode
+### 5a. Compare Behavior in Classic Mode — Tools
 
 Test the same prompts in classic mode:
 
@@ -110,6 +116,78 @@ Test the same prompts in classic mode:
 | `What are the risk factors I should consider?` | ✅ Matches description intent | ❓ May not match any trigger phrase |
 | Multi-intent: `risk summary and current rates` | ✅ Handles both intents | ❌ Selects only one topic |
 | `Look up the federal funds rate` | ✅ Calls FRED tool directly | ❌ No topic matches → fallback |
+
+After comparing, **switch back to generative orchestration** in Settings → Generative AI before continuing.
+
+---
+
+### 3b. Create a Topic for Generative Orchestration — Knowledge Only
+
+> **Use this path if you didn't set up REST API tools in Exercise 3**, or if you want to see how orchestration works with knowledge sources alone.
+
+1. Navigate to the **Topics** page → select **Add a topic** → **From blank**.
+2. Name the topic: `Standards Research Summary`
+3. On the **Trigger** node (which defaults to "The agent chooses"), add a description:
+
+   > Use this topic when the user asks for a summary of relevant audit standards, a standards research brief, or wants to know which professional standards apply to a particular audit area.
+
+4. Add a **Message** node with:
+
+   ```
+   I'll research the relevant professional standards for this topic. Let me check the knowledge sources...
+   ```
+
+5. Add a **Generative answers** node and configure it:
+   - **Input:** Click the **Input** box and set it to System `Activity.Text` — this passes the user's original message as the search query.
+   - **Data sources:** Click **Edit** under Data sources → select the knowledge sources you added in Exercise 2 (IAASB, PCAOB, EY Insights, etc.). You can select specific sources or leave it set to **Search all knowledge** to use everything configured on the agent.
+   - **Content moderation:** Leave the default setting (Medium) unless you have a reason to change it.
+
+   > The Generative answers node searches the selected knowledge sources using the input text, retrieves relevant content, and composes a grounded answer with citations.
+
+6. Add a final **Message** node:
+
+   ```
+   The above summary is based on publicly available standards content. Always verify against the authoritative full-text standards for your engagement.
+   ```
+
+7. **Save** the topic.
+
+8. **Test it:** Ask `Give me a standards research summary for revenue recognition auditing` — the agent should select this topic and ground its response in the IAASB, PCAOB, and other knowledge sources.
+
+### 4b. Switch to Classic Orchestration — Knowledge Only
+
+Now switch to classic mode to see the difference with your knowledge-only topic:
+
+1. Go to **Settings** → **Generative AI**.
+2. Turn **off** generative orchestration (switch to classic mode).
+3. Navigate back to **Topics** and open `Standards Research Summary`.
+4. Notice the trigger changes to **User says a phrase** — you now need explicit trigger phrases.
+5. Add trigger phrases:
+   - `standards research`
+   - `relevant standards`
+   - `which standards apply`
+   - `audit standards for`
+   - `standards summary`
+
+6. **Save** the topic.
+
+### 5b. Compare Behavior in Classic Mode — Knowledge Only
+
+Test the same prompts in classic mode:
+
+| Prompt | Generative Mode | Classic Mode |
+|--------|----------------|--------------|
+| `Give me a standards research summary` | ✅ Selects topic via description | ✅ Matches "standards research" trigger |
+| `Which standards apply to inventory auditing?` | ✅ Selects topic via description | ✅ Matches "which standards apply" trigger |
+| `What professional guidance exists for going-concern?` | ✅ Matches description intent | ❓ May not match any trigger phrase |
+| `What does ISA 540 say about estimates?` | ✅ Searches knowledge directly | ❌ No topic matches → may fall back to general knowledge |
+| Multi-intent: `standards for revenue and for leases` | ✅ Handles both in one response | ❌ Selects only one topic |
+
+> **Notice the key difference:** In generative mode, the agent can decide to search knowledge *without* a topic match. In classic mode, knowledge search only happens as a fallback when no topic triggers — so the agent may give a less grounded answer.
+
+After comparing, **switch back to generative orchestration** in Settings → Generative AI.
+
+---
 
 ### 6. Switch Back to Generative Mode
 
