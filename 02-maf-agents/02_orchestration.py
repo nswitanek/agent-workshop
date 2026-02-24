@@ -30,9 +30,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger("azure").setLevel(logging.DEBUG)
-logging.getLogger("httpx").setLevel(logging.WARNING)
+# logging.basicConfig(level=logging.DEBUG)
+# logging.getLogger("azure").setLevel(logging.DEBUG)
+# logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 # ---------------------------------------------------------------------------
