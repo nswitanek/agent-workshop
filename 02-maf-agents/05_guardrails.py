@@ -12,6 +12,7 @@ Reference: https://github.com/microsoft/agent-framework/tree/main/python/samples
 """
 
 import asyncio
+import logging
 import os
 import re
 from collections.abc import Awaitable, Callable
@@ -29,6 +30,10 @@ from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("azure").setLevel(logging.DEBUG)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 # --- Guardrail 1: Input Validation Middleware ---

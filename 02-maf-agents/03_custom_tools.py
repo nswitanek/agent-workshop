@@ -13,6 +13,7 @@ Reference: https://github.com/microsoft/agent-framework/tree/main/python/samples
 
 import asyncio
 import json
+import logging
 import os
 import time
 from collections.abc import Awaitable, Callable
@@ -25,6 +26,10 @@ from dotenv import load_dotenv
 from pydantic import Field
 
 load_dotenv()
+
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("azure").setLevel(logging.DEBUG)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 

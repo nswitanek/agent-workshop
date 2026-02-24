@@ -11,6 +11,7 @@ Reference: https://github.com/microsoft/agent-framework/tree/main/python/samples
 """
 
 import asyncio
+import logging
 import os
 
 from agent_framework.azure import AzureOpenAIResponsesClient
@@ -18,6 +19,10 @@ from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("azure").setLevel(logging.DEBUG)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 async def main():
