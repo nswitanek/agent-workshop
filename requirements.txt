@@ -7,3 +7,6 @@ agent-framework
 
 # Utilities
 python-dotenv>=1.0.0
+
+# otel pinning 
+opentelemetry-semantic-conventions-ai==0.4.13
