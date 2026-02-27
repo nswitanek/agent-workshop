@@ -40,9 +40,9 @@ Triggers determine **when a topic activates**. Different trigger types suit diff
 
 For compliance-critical workflows, you may want deterministic trigger matching.
 
-1. Create a new topic: `Independence Confirmation`
-2. Hover over the **Trigger** node → select the **Change trigger** icon.
-3. Select **User says a phrase**.
+1. Create a new topic: `Independence Confirmation`. Save the topic.
+2. From the **Settings** button → select **Classic orchestration**.
+3. Click **Edit** on the trigger.
 4. Add these trigger phrases:
    - `independence check`
    - `confirm independence`
@@ -64,12 +64,12 @@ For compliance-critical workflows, you may want deterministic trigger matching.
 
 7. Add a **Condition** node on `IndependenceConfirmed`:
 
-   **If Yes:**
+   **If true:** add a **Message** node:
    ```
    ✅ Independence confirmed. You may proceed with engagement activities.
    ```
 
-   **If No:**
+   **All other conditions:** add a **Message** node:
    ```
    🚫 Independence has NOT been confirmed. Please complete the independence assessment before proceeding. Contact your engagement quality reviewer if you have questions.
    ```
