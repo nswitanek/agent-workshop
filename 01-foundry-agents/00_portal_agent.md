@@ -111,6 +111,10 @@ The Portal provides a visual interface to actions and entities that you'll inter
 
 ## Next Steps
 
-Now that you've seen how it works in the portal, let's do it in code:
+Now that you've seen how it works in the portal, let's do it in code. Open this repo folder in VS Code or your preferred IDE to review the example python files. To run the examples, for example `01_first_agent.py`, in the integrated terminal execute the following:
 
-→ [01_first_agent.py](./01_first_agent.py) — The same agent, built with the SDK
+```
+# From the repo root
+cd 01-foundry-agents
+python 01_first_agent.py
+```
