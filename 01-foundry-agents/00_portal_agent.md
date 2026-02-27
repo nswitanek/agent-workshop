@@ -9,14 +9,14 @@ An **Assurance Assistant** agent with:
 - A single-turn conversation asking about audit phases
 - The same model deployment you'll use in the code examples
 
-This mirrors exactly what you'll do with code in `01_first_agent.py` and `02_system_prompts.py`.
+This mirrors what you'll do with code in `01_first_agent.py` and `02_system_prompts.py`.
 
 ## Steps
 
 ### 1. Open Azure AI Foundry
 
 1. Navigate to [ai.azure.com](https://ai.azure.com) and sign in.
-2. Select your **project** (the one matching your `PROJECT_ENDPOINT` in `.env`).
+2. Select your **project** (this will later be referenced as your `PROJECT_ENDPOINT` when you switch to code first development and use an environment file, `.env`).
 3. Select the **New Foundry** toggle at the top.
 4. Select the **Build** tab at the top.
 
@@ -28,7 +28,7 @@ This mirrors exactly what you'll do with code in `01_first_agent.py` and `02_sys
    | Field | Value |
    |-------|-------|
    | **Name** | `AssuranceAssistant-<your-initials>` - names must be unique |
-   | **Model** | Select your deployed model (e.g., `gpt-4o`) — this should match `MODEL_DEPLOYMENT_NAME` in your `.env` |
+   | **Model** | Select your deployed model (e.g., `gpt-4o`) — this will be referred to as `MODEL_DEPLOYMENT_NAME` in your `.env` |
 
 3. In the **Instructions** field, enter the following system prompt:
 
@@ -50,12 +50,12 @@ This mirrors exactly what you'll do with code in `01_first_agent.py` and `02_sys
 2. Review the response. It should describe the standard audit phases (planning, risk assessment, fieldwork, reporting, etc.) in a professional tone.
 
 
-### 4. Upgrade the Instructions
+### 4. Create a New Agent with Upgraded Instructions
 
-Now create a more detailed, guarded system prompt.
+Now create an agent with a more detailed, guarded system prompt.
 
-1. Edit the agent **Instructions** (or create a new agent named `AuditAssistant-Detailed-<your-initials>`).
-2. The new instructions should read with:
+1. Create a new agent named `AuditAssistant-Detailed-<your-initials>`.
+2. Edit the agent **Instructions** to read:
 
    ```
    You are a Senior Audit Manager AI assistant at a Big Four accounting firm.
