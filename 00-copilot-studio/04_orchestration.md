@@ -65,19 +65,19 @@ With generative orchestration enabled, the agent dynamically decides how to resp
 In generative mode, topics are selected based on their **name and description** — not trigger phrases.
 
 1. Navigate to the **Topics** page → select **Add a topic** → **From blank**.
-2. Name the topic: `Engagement Risk Summary`
+2. Change the topic name from `Untitled` (in the upper left) to: `Engagement Risk Summary`
 3. On the **Trigger** node (which defaults to "The agent chooses"), add a description:
 
    > Use this topic when the user asks for a risk summary, risk assessment overview, or engagement risk analysis for a specific company or client.
 
-4. Add a **Message** node with:
+4. Add a **Send a message** node with:
 
    ```
    I'll compile a risk summary for this engagement. Let me gather the relevant data...
    ```
 
-5. Add a **Tool** node — select the EDGAR API tool to call `getCompanyFacts`.
-6. Add another **Tool** node — select the FRED API tool to call `getSeriesObservations` for FEDFUNDS.
+5. Add a **Tool** node — search connectors for "edgar" and select the EDGAR API tool to call `getCompanyFacts`.
+6. Add another **Tool** node — search connectors for "edgar" and select the FRED API tool to call `getSeriesObservations` for FEDFUNDS.
 7. Add a final **Message** node:
 
    ```
