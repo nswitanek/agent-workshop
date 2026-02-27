@@ -44,12 +44,12 @@ We'll add four authoritative audit and accounting websites as knowledge sources.
 
 In addition to the specific websites you added above, Copilot Studio can also search the **public web** (via Bing) to answer questions that fall outside your configured knowledge sources.
 
-1. Go to **Settings** (gear icon, top right) → **Generative AI**.
-2. Look for the **Web content** or **Search public websites** toggle.
-3. When **enabled**, the agent can supplement its responses with results from the broader web — useful for general questions, but may return content outside your curated sources.
-4. When **disabled**, the agent only uses the specific knowledge sources you've added (and the LLM's training data). This gives you tighter control over what content the agent references.
+1. Go to **Settings** (labeled button, top right) → **Generative AI**.
+2. Look for the **Knowledge** → **Use information from the Web** toggle.
+3. When **On**, the agent can supplement its responses with results from the broader web — useful for general questions, but may return content outside your curated sources.
+4. When **Off**, the agent only uses the specific knowledge sources you've added (and the LLM's training data, its general background knowledge). This gives you tighter control over what content the agent references.
 
-> **Recommendation for this workshop:** Leave web search **disabled** so you can clearly see when responses are grounded in your configured knowledge sources vs. the LLM's general training data.
+> **Recommendation for this workshop:** Leave web search **Off** so you can clearly see when responses are grounded in your configured knowledge sources vs. the LLM's general training data.
 
 ### 4. Test Knowledge Grounding
 
