@@ -27,7 +27,7 @@ In this exercise, you'll create a new agent in Copilot Studio and configure its 
 3. Copilot Studio will provision your agent and generate initial instructions.
 
 4. On the **Overview** page, select **Edit** in the **Details** section.
-5. Change the agent name to: **Audit Research Assistant**
+5. Change the agent name to: **Audit Research Assistant (add your name or initials)**
 6. Select **Save**.
 
 ### 3. Configure System Instructions
