@@ -57,17 +57,17 @@ Build a topic that captures structured engagement information using variables.
 
 6. Add another **Question** node:
    - Question text: `What is the fiscal year-end date? (e.g., December 31, 2025)`
-   - **Identify as:** Date and time
+   - **Identify as:** Date
    - **Save response as:** Create a variable named `FiscalYearEnd`
 
 7. Add a **Message** node:
    ```
-   ✅ Engagement set up:
-   - **Client:** {ClientName}
-   - **Industry:** {ClientIndustry}
-   - **Fiscal Year-End:** {FiscalYearEnd}
-
-   I'll use this context to tailor my research and recommendations.
+      ✅ Engagement set up:
+      - **Client:** {ClientName}
+      - **Industry:** {ClientIndustry}
+      - **Fiscal Year-End:** {FiscalYearEnd}
+   
+      I'll use this context to tailor my research and recommendations.
    ```
    (Insert the variables using the `{x}` variable picker in the message editor.)
 
@@ -79,7 +79,7 @@ To use engagement information across *all* topics, make the key variables global
 
 1. Open the `Set Up Engagement` topic.
 2. Click on the `ClientName` variable in the variable panel.
-3. In the variable properties, toggle **Global (across all topics)** to **On**.
+3. In the variable properties, toggle **Global (any topic can access)**.
 4. Repeat for `ClientIndustry` and `FiscalYearEnd`.
 5. **Save** the topic.
 
