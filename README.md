@@ -45,8 +45,69 @@ Hands-on workshop for building AI agents using **Microsoft Foundry** (`azure-ai-
 | | • Guidance on getting to Version 0 |
 | 4:45 – 5:00 | **Wrap-up, Day 2 Preview, and Q&A** |
 | | • Comparing approaches: when to use each platform |
-| | • Preview of Day 2: Evaluation and production readiness |
+| | • Preview of Day 2: Tools, memory, and evaluation |
 | | • Open discussion |
+
+---
+
+## Day 2 Agenda (11 AM – 5 PM ET)
+
+### Morning Session (11:00 AM – 12:30 PM ET)
+
+| Time | Session |
+|------|---------|
+| 11:00 – 11:15 | **Day 1 Recap and Day 2 Overview** |
+| | • Review: agents, instructions, knowledge, conversation state |
+| | • Day 2 goals: tools, memory, evaluation, iterative improvement |
+| 11:15 – 12:00 | [**Foundry Agent Tools**](./01-foundry-agents/04_openapi_tools.md) |
+| | • OpenAPI tools in the Foundry portal (mirroring Copilot Studio connectors) |
+| | • OpenAPI tools via SDK (`OpenApiTool` class) |
+| | • [Function calling with SEC EDGAR + FRED APIs](./01-foundry-agents/04_function_calling.md) |
+| | • Comparing approaches: Copilot Studio connectors vs. portal vs. SDK |
+| 12:00 – 12:30 | [**Agent Memory**](./01-foundry-agents/05_conversation_state.md) |
+| | • Threads and short-term conversation state |
+| | • [Long-term memory with the Foundry Memory Service](./01-foundry-agents/06_memory.md) |
+| | • Memory stores, scopes, user profiles, and chat summaries |
+| | • Comparison: Copilot Studio variables/Dataverse vs. Foundry Memory Service |
+
+### Lunch (12:30 – 1:00 PM ET)
+
+### Afternoon Session (1:00 – 5:00 PM ET)
+
+| Time | Session |
+|------|---------|
+| 1:00 – 1:30 | **Agent Memory (cont.) — Hands-on** |
+| | • Running the memory exercises |
+| | • MemorySearchTool vs. direct memory store APIs |
+| | • Multi-session memory demo |
+| 1:30 – 2:30 | [**Evaluating Foundry Agents**](./01-foundry-agents/07_evaluations.md) |
+| | • Why evaluate: moving from "try a few questions" to quantified quality |
+| | • Evaluator categories: quality, agentic, safety, NLP |
+| | • The synthetic audit evaluation dataset |
+| | • Running baseline evaluation (instructions only) |
+| | • Adding tools and measuring improvement |
+| | • Prompt optimization and measuring improvement |
+| 2:30 – 2:45 | **Break** |
+| 2:45 – 3:30 | **Evaluations Hands-on + Foundry Portal** |
+| | • Navigating the Evaluation dashboard |
+| | • Comparing runs side-by-side (baseline → tools → enhanced) |
+| | • Per-row drill-down: where did tools help most? |
+| | • Prompt optimizer (portal feature walkthrough) |
+| 3:30 – 4:15 | **Iterative Improvement Lab** |
+| | • Add memory to the eval agent and measure impact |
+| | • Custom evaluators for audit-specific quality |
+| | • Expand the eval dataset with new scenarios |
+| | • Safety evaluators and responsible AI checks |
+| 4:15 – 4:30 | **Break** |
+| 4:30 – 4:50 | **Wrap-up Discussion** |
+| | • Lessons learned: what improved scores and what didn't |
+| | • Building an evaluation-driven agent development workflow |
+| | • Production readiness: continuous evaluation and monitoring |
+| 4:50 – 5:00 | **Q&A and Next Steps** |
+| | • Resources for further learning |
+| | • Open discussion |
+
+---
 
 ## Learning Goals
 
