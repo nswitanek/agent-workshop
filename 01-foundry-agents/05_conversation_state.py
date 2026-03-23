@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 
 from azure.ai.agents import AgentsClient
+from azure.ai.agents.models import MessageTextContent
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
@@ -33,7 +34,7 @@ def chat(client, agent_id, thread_id, message):
     if run.status == "completed":
         messages = client.messages.list(thread_id=thread_id)
         for msg in messages:
-            if msg.role == "assistant":
+            if msg.role == "assistant" and isinstance(msg.content[0], MessageTextContent):
                 return msg.content[0].text.value
     return f"[Run status: {run.status}]"
 
@@ -83,7 +84,8 @@ def main():
     print(f"{'='*60}")
     messages = client.messages.list(thread_id=thread.id)
     for msg in reversed(list(messages)):
-        print(f"[{msg.role}] {msg.content[0].text.value[:100]}...")
+        if isinstance(msg.content[0], MessageTextContent):
+            print(f"[{msg.role}] {msg.content[0].text.value[:100]}...")
 
     # Write the conversation to a markdown file
     output_file = OUTPUTS_DIR / "05_conversation_state.md"

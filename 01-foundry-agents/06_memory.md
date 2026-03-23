@@ -65,12 +65,46 @@ the Memory Service handles persistence automatically — no table schema needed.
 ## Prerequisites
 
 - A Foundry project with the `PROJECT_ENDPOINT` environment variable set
-- A chat model deployment (`MODEL_DEPLOYMENT_NAME`) — e.g., `gpt-4o`
-- An embedding model deployment (`EMBEDDING_MODEL_DEPLOYMENT_NAME`) — e.g., `text-embedding-3-small`
+- A chat model deployment (`MEMORY_CHAT_MODEL`) — e.g., `gpt-4o`
+  *(defaults to `gpt-4o` — must be a deployment available through the project's Azure OpenAI connection)*
+- An embedding model deployment (`AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME`) — e.g., `text-embedding-3-small`
   *(defaults to `text-embedding-3-small` if not set)*
 - `azure-ai-projects >= 2.0.0` installed
 
 > **Note:** The Memory Service is in **preview**. API surface may change.
+
+### Authorization Setup (Required)
+
+The memory service runs server-side and needs its own credentials to access your models. This requires **RBAC configuration** — without it, you'll get `"Authentication failed"` errors even though other exercises work fine.
+
+1. **Enable system-assigned managed identity** on your Foundry resource:
+   - Azure Portal → your Foundry resource → **Resource Management** → **Identity** → toggle **System assigned** to **On**
+
+2. **Assign roles** to the managed identity on the resource that contains your project:
+   - Azure Portal → your Foundry resource → **Access control (IAM)** → **Add role assignment**
+   - Assign **Azure AI User** to the managed identity
+   - Also assign **Cognitive Services OpenAI User**
+
+3. **Ensure your Azure OpenAI connection uses Entra ID auth**:
+   - The memory service authenticates to Azure OpenAI using the managed identity
+   - If your Azure OpenAI resource has `disableLocalAuth=true` (API keys disabled), the connection **must** use Entra ID (AAD) authentication, not API key
+   - Check your project's Connected Resources — the default AzureOpenAI connection should show auth type as `AAD`
+
+```bash
+# Verify managed identity exists
+az cognitiveservices account show \
+  --name <your-foundry-resource> \
+  --resource-group <your-rg> \
+  --query "identity.principalId" -o tsv
+
+# Assign required roles (use the principalId from above)
+az role assignment create --assignee <principalId> \
+  --role "Azure AI User" --scope <foundry-resource-id>
+az role assignment create --assignee <principalId> \
+  --role "Cognitive Services OpenAI User" --scope <foundry-resource-id>
+```
+
+> **Troubleshooting "Authentication failed":** If the memory store creates successfully but `begin_update_memories` fails, the memory service backend can't authenticate to the Azure OpenAI resource. Check: (1) managed identity is enabled, (2) RBAC roles are assigned, (3) the Azure OpenAI connection uses Entra ID auth (not API key, if local auth is disabled). RBAC changes take up to 10 minutes to propagate.
 
 ## Code Walkthrough (`06_memory.py`)
 

@@ -28,8 +28,10 @@ from azure.ai.projects.models import (
     MemoryStoreDefaultDefinition,
     MemoryStoreDefaultOptions,
     PromptAgentDefinition,
+    ResponsesAssistantMessageItemParam,
+    ResponsesUserMessageItemParam,
 )
-from azure.identity import DefaultAzureCredential
+from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -61,9 +63,12 @@ Be professional, precise, and reference applicable standards when relevant.
 
 def create_memory_store(project_client: AIProjectClient) -> None:
     """Create a memory store configured for assurance practice use cases."""
-    chat_model = os.environ["MODEL_DEPLOYMENT_NAME"]
+    # The memory store's chat_model must be a deployment available in the
+    # project's Azure OpenAI connection. This is often different from the
+    # agent model (MODEL_DEPLOYMENT_NAME) which may use Foundry model routing.
+    chat_model = os.environ.get("MEMORY_CHAT_MODEL", "gpt-4o")
     embedding_model = os.environ.get(
-        "EMBEDDING_MODEL_DEPLOYMENT_NAME", "text-embedding-3-small"
+        "AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME", "text-embedding-3-small"
     )
 
     options = MemoryStoreDefaultOptions(
@@ -95,47 +100,52 @@ def store_memories_via_api(project_client: AIProjectClient, scope: str) -> None:
     """Store memories from simulated past conversations using the direct API."""
     # Simulate a past session where the auditor shared preferences
     past_conversation = [
-        {
-            "role": "user",
-            "content": (
+        ResponsesUserMessageItemParam(
+            content=(
                 "I focus primarily on technology and SaaS company audits. "
                 "I prefer concise responses that reference PCAOB standards. "
                 "I always want to see materiality thresholds discussed early."
             ),
-            "type": "message",
-        },
-        {
-            "role": "assistant",
-            "content": (
+        ),
+        ResponsesAssistantMessageItemParam(
+            content=(
                 "Noted — I'll tailor recommendations for technology/SaaS audits, "
                 "keep responses concise with PCAOB standard references, and "
                 "prioritize materiality thresholds in planning discussions."
             ),
-            "type": "message",
-        },
-        {
-            "role": "user",
-            "content": (
+        ),
+        ResponsesUserMessageItemParam(
+            content=(
                 "We're working on the TechVentures Inc. engagement — they're a "
                 "mid-cap public SaaS company with $200M revenue. Key risks "
                 "include revenue recognition under ASC 606 and a recent acquisition."
             ),
-            "type": "message",
-        },
+        ),
     ]
 
     print("\nStoring memories from simulated past session...")
-    update_poller = project_client.memory_stores.begin_update_memories(
-        name=MEMORY_STORE_NAME,
-        scope=scope,
-        items=past_conversation,
-        update_delay=0,  # Process immediately (in production, use a longer delay)
-    )
-
-    update_result = update_poller.result()
-    print(f"Stored {len(update_result.memory_operations)} memory operations:")
-    for operation in update_result.memory_operations:
-        print(f"  - {operation.kind}: {operation.memory_item.content[:80]}...")
+    try:
+        update_poller = project_client.memory_stores.begin_update_memories(
+            name=MEMORY_STORE_NAME,
+            scope=scope,
+            items=past_conversation,
+            update_delay=0,
+        )
+        update_result = update_poller.result()
+        print(f"Stored {len(update_result.memory_operations)} memory operations:")
+        for operation in update_result.memory_operations:
+            print(f"  - {operation.kind}: {operation.memory_item.content[:80]}...")
+    except Exception as e:
+        if "Authentication failed" in str(e):
+            print(
+                "\n*** Authentication failed ***\n"
+                "The memory service backend could not authenticate to the Azure OpenAI resource.\n"
+                "See 06_memory.md 'Authorization Setup' section for required RBAC configuration:\n"
+                "  1. Enable system-assigned managed identity on your Foundry resource\n"
+                "  2. Assign 'Azure AI User' + 'Cognitive Services OpenAI User' roles\n"
+                "  3. Ensure Azure OpenAI connection uses Entra ID (AAD) auth\n"
+            )
+        raise
 
 
 def search_memories_via_api(project_client: AIProjectClient, scope: str) -> list[str]:
@@ -155,11 +165,9 @@ def search_memories_via_api(project_client: AIProjectClient, scope: str) -> list
 
     # Retrieve contextual memories based on a query
     print("\n--- Contextual Memories (query: TechVentures audit risks) ---")
-    query = {
-        "role": "user",
-        "content": "What do we know about the TechVentures engagement?",
-        "type": "message",
-    }
+    query = ResponsesUserMessageItemParam(
+        content="What do we know about the TechVentures engagement?",
+    )
     contextual_result = project_client.memory_stores.search_memories(
         name=MEMORY_STORE_NAME,
         scope=scope,
@@ -218,7 +226,7 @@ def run_agent_with_memory(project_client: AIProjectClient, scope: str) -> str:
         conversation=conv1.id,
         extra_body={"agent_reference": {"name": agent.name, "type": "agent_reference"}},
     )
-    print(f"User: I specialize in financial services audits...")
+    print("User: I specialize in financial services audits...")
     print(f"Agent: {response1.output_text}")
 
     # Wait for memories to be stored
@@ -239,7 +247,7 @@ def run_agent_with_memory(project_client: AIProjectClient, scope: str) -> str:
         conversation=conv2.id,
         extra_body={"agent_reference": {"name": agent.name, "type": "agent_reference"}},
     )
-    print(f"User: I have a new audit client: Regional Bank Corp...")
+    print("User: I have a new audit client: Regional Bank Corp...")
     print(f"Agent: {response2.output_text}")
 
     # Wait for follow-up memories
@@ -256,7 +264,7 @@ def run_agent_with_memory(project_client: AIProjectClient, scope: str) -> str:
         conversation=conv3.id,
         extra_body={"agent_reference": {"name": agent.name, "type": "agent_reference"}},
     )
-    print(f"User: What do you remember about my preferences and ongoing engagements?")
+    print("User: What do you remember about my preferences and ongoing engagements?")
     print(f"Agent: {response3.output_text}")
 
     # Clean up agent
@@ -273,7 +281,7 @@ def run_agent_with_memory(project_client: AIProjectClient, scope: str) -> str:
 def main():
     project_client = AIProjectClient(
         endpoint=os.environ["PROJECT_ENDPOINT"],
-        credential=DefaultAzureCredential(),
+        credential=AzureCliCredential(),
     )
 
     scope = "auditor_demo_user"
@@ -283,12 +291,13 @@ def main():
     print("PART A: Memory Store APIs — Direct Control")
     print("=" * 60)
 
-    # Create the memory store (skip if it already exists)
+    # Delete any stale memory store and recreate with current config
     try:
-        existing = project_client.memory_stores.get(MEMORY_STORE_NAME)
-        print(f"Memory store already exists: {existing.name}")
+        project_client.memory_stores.delete(MEMORY_STORE_NAME)
+        print("Deleted existing memory store (recreating with current config)")
     except Exception:
-        create_memory_store(project_client)
+        pass
+    create_memory_store(project_client)
 
     # Store memories from a simulated past session
     store_memories_via_api(project_client, scope)
