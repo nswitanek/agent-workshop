@@ -99,8 +99,8 @@
     "/fred/series/observations": {
       "get": {
         "operationId": "getSeriesObservations",
-        "summary": "Get data values for an economic data series",
-        "description": "Retrieve the actual data values (observations) for an economic data series. Returns date-value pairs for the requested period. Use observation_start and observation_end to filter the date range. Supports unit transformations (e.g., percent change) and frequency aggregation.",
+        "summary": "Get historical data values for an economic data series",
+        "description": "Retrieve historical data values (observations) for an economic data series. Returns date-value pairs. This is historical government data for research purposes, not real-time market data. Use observation_start and observation_end in YYYY-MM-DD format to narrow the date range.",
         "parameters": [
           {
             "name": "series_id",
@@ -126,10 +126,9 @@
             "name": "observation_start",
             "in": "query",
             "required": false,
-            "description": "Start date for observations (YYYY-MM-DD). Defaults to series start.",
+            "description": "Start date in YYYY-MM-DD format. Defaults to series start.",
             "schema": {
               "type": "string",
-              "format": "date",
               "example": "2020-01-01"
             }
           },
@@ -137,10 +136,9 @@
             "name": "observation_end",
             "in": "query",
             "required": false,
-            "description": "End date for observations (YYYY-MM-DD). Defaults to series end.",
+            "description": "End date in YYYY-MM-DD format. Defaults to series end.",
             "schema": {
               "type": "string",
-              "format": "date",
               "example": "2024-12-31"
             }
           },
@@ -148,44 +146,23 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Maximum number of observations to return. Keep this low (20–100) to avoid oversized responses. For multi-decade series, use observation_start/observation_end to narrow the date range instead of relying on limit alone.",
+            "description": "Maximum number of observations to return. Keep low to avoid large responses.",
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 100000,
-              "default": 100
+              "maximum": 1000,
+              "default": 20
             }
           },
           {
             "name": "sort_order",
             "in": "query",
             "required": false,
-            "description": "Sort order for observations by date.",
+            "description": "Sort order for observations by date. Use desc to get most recent first.",
             "schema": {
               "type": "string",
               "enum": ["asc", "desc"],
-              "default": "asc"
-            }
-          },
-          {
-            "name": "units",
-            "in": "query",
-            "required": false,
-            "description": "Data value transformation. lin = no transform, chg = change, ch1 = change from year ago, pch = percent change, pc1 = percent change from year ago, pca = compounded annual rate of change, cch = continuously compounded rate of change, cca = continuously compounded annual rate of change, log = natural log.",
-            "schema": {
-              "type": "string",
-              "enum": ["lin", "chg", "ch1", "pch", "pc1", "pca", "cch", "cca", "log"],
-              "default": "lin"
-            }
-          },
-          {
-            "name": "frequency",
-            "in": "query",
-            "required": false,
-            "description": "Aggregate to a lower frequency. d = daily, w = weekly, bw = biweekly, m = monthly, q = quarterly, sa = semiannual, a = annual.",
-            "schema": {
-              "type": "string",
-              "enum": ["d", "w", "bw", "m", "q", "sa", "a"]
+              "default": "desc"
             }
           }
         ],
