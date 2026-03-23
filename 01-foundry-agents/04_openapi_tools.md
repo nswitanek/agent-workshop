@@ -312,6 +312,16 @@ python 04_openapi_tools.py
 
 ## Troubleshooting
 
+### EDGAR Search 500 / Internal Server Error
+
+The EFTS (EDGAR Full-Text Search) server at `efts.sec.gov` can return intermittent HTTP 500 errors, especially under load. If you see this:
+
+1. **Retry the query.** EFTS 500s are typically transient — wait a few seconds and try again.
+2. **Simplify the search.** Use a shorter, quoted company name (e.g., `"Nvidia"` instead of `"Nvidia Corporation"`).
+3. **Use the function-tool approach** ([`04_function_calling.py`](./04_function_calling.py)) for more reliable search with retry logic built into your code.
+
+> **Note:** The EFTS `search-index` endpoint always returns up to 100 filing results per query (pagination via `size`/`from` is not supported on this endpoint). The most useful part for CIK lookups is the `entity_filter` aggregation, which lists matching companies with their CIK numbers.
+
 ### "Received message exceeds the maximum configured message size"
 
 Some SEC EDGAR endpoints return very large responses. The `getCompanyFacts` endpoint in particular returns **all** XBRL-tagged financial data for a company (3–5 MB for major companies like Microsoft, Apple, or Tesla). This exceeds the Foundry platform's message size limit.

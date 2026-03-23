@@ -20,7 +20,7 @@
       "get": {
         "operationId": "searchFilings",
         "summary": "Search EDGAR filings by company name or keywords",
-        "description": "Search SEC EDGAR filings by company name, ticker, form type, and date range. Returns matching filings along with an entity_filter aggregation that lists matching companies with their CIK numbers and ticker symbols. Use this to look up a company's CIK number from its name or ticker — the CIK is needed by the SEC EDGAR Data API endpoints (getCompanySubmissions, getCompanyFacts, etc.). To look up a company CIK, search with the company name in quotes and set size to 0 to get only the entity aggregation without individual filing results.",
+        "description": "Search SEC EDGAR filings by company name, ticker, form type, and date range. Returns up to 100 matching filings along with an entity_filter aggregation that lists matching companies with their CIK numbers and ticker symbols. Use this to look up a company's CIK number from its name or ticker — the CIK is needed by the SEC EDGAR Data API endpoints (getCompanySubmissions, getCompanyConcept, etc.). To find a company CIK, search with the company name in quotes and look at the entity_filter aggregation buckets in the response.",
         "parameters": [
           {
             "name": "User-Agent",
@@ -36,7 +36,7 @@
             "name": "q",
             "in": "query",
             "required": true,
-            "description": "Search query. Use double quotes for exact phrase matching (e.g., '\"apple inc\"'). To search by company name for CIK lookup, put the company name in quotes.",
+            "description": "Search query. Use double quotes for exact phrase matching (e.g., '\"apple inc\"'). To search by company name for CIK lookup, put the company name in quotes and extract the CIK from the entity_filter aggregation in the response.",
             "schema": {
               "type": "string",
               "example": "\"apple inc\""
@@ -83,30 +83,6 @@
               "type": "string",
               "format": "date",
               "example": "2025-12-31"
-            }
-          },
-          {
-            "name": "from",
-            "in": "query",
-            "required": false,
-            "description": "Starting index for pagination of filing results. Use 0 for the first page.",
-            "schema": {
-              "type": "integer",
-              "default": 0,
-              "example": 0
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
-            "description": "Number of filing results to return. Set to 0 to get only the entity aggregation (useful for CIK lookups). Maximum 100.",
-            "schema": {
-              "type": "integer",
-              "default": 10,
-              "minimum": 0,
-              "maximum": 100,
-              "example": 5
             }
           }
         ],
