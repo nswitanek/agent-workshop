@@ -346,13 +346,26 @@ The SEC blocks automated requests that don't include a `User-Agent` header ident
 
 ### Foundry guardrail blocks the response
 
-If you see *"This interaction was blocked by a safety and security control in this asset's Foundry guardrail"*, this is a project-level content filter, not an API error. Common causes:
+If you see *"This interaction was blocked by a safety and security control in this asset's Foundry guardrail"*, this is a project-level content filter, not an API error. This most commonly affects FRED queries but can affect any tool.
 
-1. **Response too large.** The FRED API can return thousands of observations if the agent doesn't constrain the date range. The specs in this repo default to `limit=100` for observations, but if the agent still fetches too much data, the guardrail may block processing. Try a more specific query: `"What is the current federal funds rate?"` instead of `"Show me all GDP data"`.
+**Diagnose the cause:**
 
-2. **Project guardrail configuration.** Your Foundry project may have strict content safety settings. In the Azure AI Foundry portal, check your project's **Safety + security** or **Guardrails** configuration and verify that financial/economic queries are permitted.
+1. **Check if it's an auth/connection failure disguised as a guardrail block.** If the FRED API key isn't injected correctly, FRED returns a 400 error, and the platform may route that through the guardrail instead of showing the raw error. Verify your connection:
+   - In the portal, go to your project's **Connected resources** and confirm the FRED connection exists
+   - Test manually with your API key:
+     ```bash
+     curl "https://api.stlouisfed.org/fred/series/observations?series_id=UNRATE&file_type=json&api_key=YOUR_KEY_HERE&limit=5"
+     ```
+   - If this returns data, the key is valid and the issue is in the connection mapping
 
-3. **Workaround:** Use the function-tool approach ([`04_function_calling.py`](./04_function_calling.py)) where you control the API calls and can pre-filter data before it reaches the model.
+2. **Check your project's guardrail configuration.** In the Foundry portal:
+   - Open your **project settings** → look for **Safety + security**, **Guardrails**, or **Content filtering**
+   - Look for filters like **Protected material detection**, **Ungrounded content**, or **Indirect prompt injection** — these can false-positive on legitimate API responses
+   - Try setting the content filter to a less restrictive level for testing
+
+3. **Try the SEC EDGAR tools first** to confirm the guardrail isn't blocking all OpenAPI tools. If EDGAR works but FRED doesn't, the issue is likely with the FRED connection/authentication, not the guardrail itself.
+
+4. **Workaround:** Use the function-tool approach ([`04_function_calling.py`](./04_function_calling.py)) where you control the API calls directly and return pre-formatted responses to the agent.
 
 ### FRED API returns errors
 
