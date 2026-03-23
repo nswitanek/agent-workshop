@@ -80,19 +80,34 @@ real data). Queries 1, 2, 5, 8, and 9 benefit from **better instructions**
 - For tool-enhanced runs: FRED connection set up (see Exercise 4a)
 - Enough model quota for ~60-70 LLM calls per evaluation run
   (10 queries × 6 evaluators + the agent's own calls)
+- Set `PARTICIPANT_INITIALS` in your `.env` file (e.g., `PARTICIPANT_INITIALS=NS`)
+  so your agents, evaluation runs, and output files are uniquely namespaced
+  within the shared Foundry project
 
 ## Code Walkthrough (`07_evaluations.py`)
 
 ### Architecture
 
 The script has a CLI-driven workflow. Each mode creates/updates the same
-persistent agent and runs the evaluation pipeline:
+persistent agent and runs the evaluation pipeline.
+
+> **Why CLI-driven?** Because each mode is a standalone command, this
+> workflow integrates naturally into CI/CD and DevOps pipelines. You can
+> run `python 07_evaluations.py baseline` in a GitHub Actions step,
+> compare scores against a threshold, and gate deployments on evaluation
+> results — turning agent improvements into a repeatable, automated process.
 
 ```
 eval_dataset.jsonl  →  Agent (run each query)  →  responses.jsonl  →  evaluate()  →  Foundry portal
 ```
 
 ### Modes
+
+Set your initials first so results are namespaced in the shared project:
+
+```bash
+export PARTICIPANT_INITIALS=NS   # or add to .env
+```
 
 ```bash
 python 07_evaluations.py baseline   # Instructions only, no tools
@@ -101,6 +116,10 @@ python 07_evaluations.py enhanced   # Enhanced prompt + tools
 python 07_evaluations.py compare    # Side-by-side metrics table
 python 07_evaluations.py safety     # Safety evaluators on latest run
 ```
+
+With initials set, the agent is created as `AuditResearchAgent-Eval-NS`,
+evaluation runs appear as `audit-agent-baseline-NS`, and output files are
+saved as `eval_baseline_responses-NS.jsonl`, etc.
 
 ### Step 1: Create the Persistent Agent
 

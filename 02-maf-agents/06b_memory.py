@@ -1,7 +1,7 @@
 """
 06b — Long-Term Memory with Microsoft Agent Framework
 
-Parallel to Exercise 06 (Foundry SDK memory), this exercise demonstrates
+Parallel to Foundry Agents Exercise 06 (Foundry SDK memory), this exercise demonstrates
 long-term, cross-session memory using MAF's context provider architecture.
 
   Part A: LocalPersistentMemoryProvider — file-backed memory that always works

@@ -21,6 +21,7 @@ Reference: https://learn.microsoft.com/en-us/azure/ai-foundry/evaluation/
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 from azure.ai.agents import AgentsClient
@@ -52,7 +53,9 @@ DATA_DIR = SCRIPT_DIR / "data"
 OPENAPI_DIR = SCRIPT_DIR / "openapi"
 OUTPUTS_DIR = SCRIPT_DIR / "outputs"
 
-AGENT_NAME = "AuditResearchAgent-Eval"
+PARTICIPANT_INITIALS = os.environ.get("PARTICIPANT_INITIALS", "")
+SUFFIX = f"-{PARTICIPANT_INITIALS}" if PARTICIPANT_INITIALS else ""
+AGENT_NAME = f"AuditResearchAgent-Eval{SUFFIX}"
 
 BASELINE_INSTRUCTIONS = """\
 You are an Audit Research Assistant at a professional services firm.
@@ -159,8 +162,7 @@ def create_or_get_agent(
     """Create the eval agent or retrieve it if it already exists.
     Returns the agent ID."""
     # Check if agent already exists
-    agents = client.list_agents()
-    for agent in agents.data:
+    for agent in client.list_agents():
         if agent.name == AGENT_NAME:
             print(f"Found existing agent: {agent.id} ({agent.name})")
             return agent.id
@@ -215,34 +217,64 @@ def run_agent_on_dataset(
     for i, row in enumerate(rows):
         query = row["query"]
         print(f"  [{i + 1}/{len(rows)}] {query[:80]}...")
+        t0 = time.time()
 
-        thread = client.threads.create()
-        client.messages.create(thread_id=thread.id, role="user", content=query)
-        run = client.runs.create_and_process(thread_id=thread.id, agent_id=agent_id)
-
-        # Collect response
-        messages = client.messages.list(thread_id=thread.id)
+        # Retry with exponential backoff for rate-limit errors
         response_text = ""
         context_parts = []
-        for msg in messages.data:
-            if msg.role == "assistant":
-                for block in msg.content:
-                    if hasattr(block, "text"):
-                        response_text = block.text.value
-                        break
+        thread = None
+        for attempt in range(5):
+            try:
+                thread = client.threads.create()
+                client.messages.create(thread_id=thread.id, role="user", content=query)
+                run = client.runs.create_and_process(
+                    thread_id=thread.id,
+                    agent_id=agent_id,
+                )
 
-        # Collect tool call info as context (if any)
-        run_steps = client.run_steps.list(thread_id=thread.id, run_id=run.id)
-        for step in run_steps.data:
-            if step.type == "tool_calls":
-                for tc in step.step_details.tool_calls:
-                    tc_dict = tc if isinstance(tc, dict) else tc.as_dict()
-                    tc_type = tc_dict.get("type", "")
-                    if tc_type == "open_api":
-                        api_info = tc_dict.get("open_api", {})
-                        output = api_info.get("output", "")
-                        if output:
-                            context_parts.append(output[:2000])
+                # Collect response
+                messages = client.messages.list(thread_id=thread.id)
+                for msg in messages:
+                    if msg.role == "assistant":
+                        for block in msg.content:
+                            if hasattr(block, "text"):
+                                response_text = block.text.value
+                                break
+
+                # Collect tool call info as context
+                run_steps = client.run_steps.list(thread_id=thread.id, run_id=run.id)
+                for step in run_steps:
+                    if step.type == "tool_calls":
+                        for tc in step.step_details.tool_calls:
+                            tc_dict = tc if isinstance(tc, dict) else tc.as_dict()
+                            tc_type = tc_dict.get("type", "")
+                            if tc_type == "open_api":
+                                api_info = tc_dict.get("open_api", {})
+                                output_val = api_info.get("output", "")
+                                if output_val:
+                                    context_parts.append(output_val[:2000])
+
+                client.threads.delete(thread.id)
+                thread = None
+                elapsed = time.time() - t0
+                print(f"    ✓ {elapsed:.1f}s")
+                break  # Success
+
+            except Exception as e:
+                if "429" in str(e) or "Too Many Requests" in str(e) or "rate" in str(e).lower():
+                    wait = 2 ** attempt * 5
+                    print(f"    Rate limited, retrying in {wait}s (attempt {attempt + 1}/5)...")
+                    time.sleep(wait)
+                else:
+                    print(f"    Error: {e}")
+                    break
+            finally:
+                if thread:
+                    try:
+                        client.threads.delete(thread.id)
+                    except Exception:
+                        pass
+                    thread = None
 
         results.append({
             "query": query,
@@ -250,9 +282,6 @@ def run_agent_on_dataset(
             "context": "\n---\n".join(context_parts) if context_parts else "",
             "ground_truth": row.get("ground_truth", ""),
         })
-
-        # Clean up thread
-        client.threads.delete(thread.id)
 
     # Write results JSONL
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -269,17 +298,21 @@ def run_agent_on_dataset(
 # ---------------------------------------------------------------------------
 
 def get_model_config() -> AzureOpenAIModelConfiguration:
-    """Build the model config used by LLM-as-judge evaluators."""
+    """Build the model config used by LLM-as-judge evaluators.
+
+    Uses EVAL_MODEL_DEPLOYMENT_NAME (default: gpt-4.1) to separate evaluator
+    load from agent load. This avoids rate-limit contention when 30+
+    participants run evals in parallel.
+    """
     endpoint = os.environ["PROJECT_ENDPOINT"]
-    # Extract the base Azure OpenAI endpoint from the project endpoint
-    # PROJECT_ENDPOINT is like https://<account>.services.ai.azure.com/api/projects/<project>
-    # The Azure OpenAI endpoint is https://<account>.services.ai.azure.com
     parts = endpoint.split("/api/")
     azure_endpoint = parts[0] if len(parts) > 1 else endpoint
 
+    eval_model = os.environ.get("EVAL_MODEL_DEPLOYMENT_NAME", "gpt-4.1")
+
     return AzureOpenAIModelConfiguration(
         azure_endpoint=azure_endpoint,
-        azure_deployment=os.environ["MODEL_DEPLOYMENT_NAME"],
+        azure_deployment=eval_model,
     )
 
 
@@ -379,11 +412,11 @@ def main():
             client, instructions=BASELINE_INSTRUCTIONS, with_tools=False
         )
 
-        results_path = OUTPUTS_DIR / "eval_baseline_responses.jsonl"
+        results_path = OUTPUTS_DIR / f"eval_baseline_responses{SUFFIX}.jsonl"
         print("\nGenerating agent responses...")
         run_agent_on_dataset(client, agent_id, dataset_path, results_path)
 
-        run_evaluation(results_path, "audit-agent-baseline")
+        run_evaluation(results_path, f"audit-agent-baseline{SUFFIX}")
 
     elif mode == "tools":
         # --- Run 2: Agent with OpenAPI tools ---
@@ -394,11 +427,11 @@ def main():
         agent_id = create_or_get_agent(client)
         update_agent(client, agent_id, instructions=BASELINE_INSTRUCTIONS, with_tools=True)
 
-        results_path = OUTPUTS_DIR / "eval_tools_responses.jsonl"
+        results_path = OUTPUTS_DIR / f"eval_tools_responses{SUFFIX}.jsonl"
         print("\nGenerating agent responses...")
         run_agent_on_dataset(client, agent_id, dataset_path, results_path)
 
-        run_evaluation(results_path, "audit-agent-with-tools")
+        run_evaluation(results_path, f"audit-agent-with-tools{SUFFIX}")
 
     elif mode == "enhanced":
         # --- Run 3: Enhanced prompt + tools ---
@@ -409,11 +442,11 @@ def main():
         agent_id = create_or_get_agent(client)
         update_agent(client, agent_id, instructions=ENHANCED_INSTRUCTIONS, with_tools=True)
 
-        results_path = OUTPUTS_DIR / "eval_enhanced_responses.jsonl"
+        results_path = OUTPUTS_DIR / f"eval_enhanced_responses{SUFFIX}.jsonl"
         print("\nGenerating agent responses...")
         run_agent_on_dataset(client, agent_id, dataset_path, results_path)
 
-        run_evaluation(results_path, "audit-agent-enhanced")
+        run_evaluation(results_path, f"audit-agent-enhanced{SUFFIX}")
 
     elif mode == "compare":
         # --- Compare all available runs ---
@@ -429,13 +462,13 @@ def main():
         print("=" * 60)
 
         # Find the most recent responses file
-        response_files = sorted(OUTPUTS_DIR.glob("eval_*_responses.jsonl"))
+        response_files = sorted(OUTPUTS_DIR.glob(f"eval_*_responses{SUFFIX}.jsonl"))
         if not response_files:
             print("No response files found. Run baseline first.")
             return
         latest = response_files[-1]
         print(f"Running safety eval on: {latest.name}")
-        run_evaluation(latest, f"audit-agent-safety-{latest.stem}", include_safety=True)
+        run_evaluation(latest, f"audit-agent-safety-{latest.stem}{SUFFIX}", include_safety=True)
 
     else:
         print(f"Usage: python {sys.argv[0]} [baseline|tools|enhanced|compare|safety]")
@@ -452,7 +485,7 @@ def main():
 
 def compare_results():
     """Load all evaluation result files and print a side-by-side comparison."""
-    result_files = sorted(OUTPUTS_DIR.glob("*_results.json"))
+    result_files = sorted(OUTPUTS_DIR.glob(f"*{SUFFIX}_results.json"))
     if not result_files:
         print("No evaluation results found. Run baseline, tools, or enhanced first.")
         return
