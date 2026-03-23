@@ -357,9 +357,13 @@ The SEC blocks automated requests that don't include a `User-Agent` header ident
 
 If you see *"This interaction was blocked by a safety and security control in this asset's Foundry guardrail"*, this is a project-level content filter, not an API error. This most commonly affects FRED queries but can affect any tool.
 
-**Diagnose the cause:**
+**Model-specific behavior:** The guardrail interacts with how each model frames its output. In testing, **gpt-5.2 triggers the guardrail** on FRED queries while **gpt-4o, gpt-4.1, grok-4-fast-non-reasoning, and model-router all work fine** with the same prompts and spec. If you hit this issue, try switching your agent's model deployment before adjusting guardrail settings.
 
-1. **Check if it's an auth/connection failure disguised as a guardrail block.** If the FRED API key isn't injected correctly, FRED returns a 400 error, and the platform may route that through the guardrail instead of showing the raw error. Verify your connection:
+**Other things to check:**
+
+1. **Try a different model first.** Switch the agent to gpt-4o or gpt-4.1 and retry. If the query works, the issue is how the specific model phrases its response, not your spec or connection.
+
+2. **Check if it's an auth/connection failure disguised as a guardrail block.** If the FRED API key isn't injected correctly, FRED returns a 400 error, and the platform may route that through the guardrail instead of showing the raw error. Verify your connection:
    - In the portal, go to your project's **Connected resources** and confirm the FRED connection exists
    - Test manually with your API key:
      ```bash
@@ -367,12 +371,10 @@ If you see *"This interaction was blocked by a safety and security control in th
      ```
    - If this returns data, the key is valid and the issue is in the connection mapping
 
-2. **Check your project's guardrail configuration.** In the Foundry portal:
+3. **Check your project's guardrail configuration.** In the Foundry portal:
    - Open your **project settings** → look for **Safety + security**, **Guardrails**, or **Content filtering**
    - Look for filters like **Protected material detection**, **Ungrounded content**, or **Indirect prompt injection** — these can false-positive on legitimate API responses
    - Try setting the content filter to a less restrictive level for testing
-
-3. **Try the SEC EDGAR tools first** to confirm the guardrail isn't blocking all OpenAPI tools. If EDGAR works but FRED doesn't, the issue is likely with the FRED connection/authentication, not the guardrail itself.
 
 4. **Workaround:** Use the function-tool approach ([`04_function_calling.py`](./04_function_calling.py)) where you control the API calls directly and return pre-formatted responses to the agent.
 
