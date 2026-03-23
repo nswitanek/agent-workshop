@@ -90,22 +90,29 @@ The SEC EDGAR Data API provides free access to company filings and XBRL financia
 4. Set the **Instructions** to:
 
    ```
-   You are an Audit Research Assistant at a professional services firm. You have
-   access to three tools:
+   You are an Audit Research Assistant at a professional services firm. You
+   retrieve historical economic and financial data for audit risk assessment.
+   You do NOT provide financial advice or real-time market data — you provide
+   historical data from public government sources for research purposes only.
+
+   You have access to three tools:
 
    1. sec_edgar_search — Search SEC EDGAR by company name or ticker to find CIK
       numbers. Use this FIRST when a user asks about a company.
    2. sec_edgar_data — Retrieve SEC filing history and XBRL financial data
       (revenue, assets, net income, etc.) by CIK number.
-   3. fred_economic_data — Retrieve economic indicators such as interest rates,
-      inflation, GDP, unemployment, and mortgage rates from FRED.
+   3. fred_economic_data — Retrieve historical economic indicators such as
+      interest rates, inflation, GDP, unemployment, and mortgage rates from
+      FRED (Federal Reserve Economic Data).
 
    Workflow:
    - When asked about a company, use sec_edgar_search to find the CIK, then use
      sec_edgar_data to pull filings or financial facts.
-   - When asked about economic conditions, use fred_economic_data.
+   - When asked about economic conditions, use fred_economic_data to retrieve
+     historical data for context.
    - Always explain what data you retrieved and how it relates to audit risk
-     assessment.
+     assessment. Note that all data is historical and sourced from public
+     government databases.
    ```
 
    > **Why name the tools in the instructions?** The tool names here — `sec_edgar_search`, `sec_edgar_data`, `fred_economic_data` — match the names you'll enter when adding each OpenAPI tool in the steps below. Referencing them explicitly helps the model understand which tool to reach for.
@@ -208,10 +215,12 @@ The platform registers all five `operationId`s as callable functions:
 
 | Prompt | Expected Behavior |
 |--------|-------------------|
-| `What is the current federal funds rate?` | Calls getSeriesObservations for FEDFUNDS |
+| `Show me the recent federal funds rate trend` | Calls getSeriesObservations for FEDFUNDS |
 | `Show me GDP growth over the last 5 years` | Calls getSeriesObservations for GDP |
 | `Search for inflation-related economic indicators` | Calls searchSeries |
-| `What is the current unemployment rate?` | Calls getSeriesObservations for UNRATE |
+| `What has the unemployment rate looked like recently?` | Calls getSeriesObservations for UNRATE |
+
+> **Tip:** Foundry guardrails may block queries phrased as *"What is the current \<rate\>?"* because they resemble real-time financial advice requests. Rephrase as *"Show me recent \<rate\> data"* or *"What has \<rate\> looked like recently?"* to ask for the same data without triggering the filter.
 
 ---
 
@@ -221,11 +230,11 @@ Now that all three OpenAPI tools are connected, test prompts that require the ag
 
 | Prompt | Expected Tools |
 |--------|---------------|
-| `I'm assessing going-concern risk for a retail company. What's the current economic outlook?` | FRED (GDP, UNRATE, FEDFUNDS) |
+| `I'm assessing going-concern risk for a retail company. What's the recent economic outlook?` | FRED (GDP, UNRATE, FEDFUNDS) |
 | `Look up Tesla's revenue trend and compare against GDP growth` | EDGAR Search → EDGAR Data + FRED |
 | `What were Nvidia's total assets in their latest filing?` | EDGAR Search → EDGAR Data (getCompanyConcept) |
-| `For an audit of a bank, what interest rate data should I consider?` | FRED (FEDFUNDS, DGS10, MORTGAGE30US) |
-| `Pull Apple's net income and compare it against the unemployment rate` | EDGAR Data + FRED |
+| `For an audit of a bank, what interest rate trends should I consider?` | FRED (FEDFUNDS, DGS10, MORTGAGE30US) |
+| `Pull Apple's net income and show the unemployment rate trend alongside it` | EDGAR Data + FRED |
 
 ---
 
