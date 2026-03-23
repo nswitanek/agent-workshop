@@ -76,13 +76,12 @@ real data). Queries 1, 2, 5, 8, and 9 benefit from **better instructions**
 ## Prerequisites
 
 - A Foundry project with `PROJECT_ENDPOINT` and `MODEL_DEPLOYMENT_NAME` set
-- `azure-ai-evaluation` installed: `pip install azure-ai-evaluation`
+- `azure-ai-evaluation` and `promptflow>=1.18.0` installed (included in `requirements.txt`)
 - For tool-enhanced runs: FRED connection set up (see Exercise 4a)
-- Enough model quota for ~60-70 LLM calls per evaluation run
-  (10 queries × 6 evaluators + the agent's own calls)
-- Set `PARTICIPANT_INITIALS` in your `.env` file (e.g., `PARTICIPANT_INITIALS=NS`)
-  so your agents, evaluation runs, and output files are uniquely namespaced
-  within the shared Foundry project
+- Model quota: the agent uses `MODEL_DEPLOYMENT_NAME` (default: gpt-5-mini), while evaluators use `EVAL_MODEL_DEPLOYMENT_NAME` (default: gpt-4.1) to avoid rate-limit contention. Both should have sufficient TPM for ~70 calls per evaluation run.
+- Set `PARTICIPANT_INITIALS` in your `.env` file (e.g., `PARTICIPANT_INITIALS=NS`) so your agents, evaluation runs, and output files are uniquely namespaced within the shared Foundry project
+
+> **Troubleshooting: Storage upload errors.** The `evaluate()` function uploads results to Azure Blob Storage for the Foundry portal dashboard. If the storage account has public network access disabled, this upload may fail with `AuthorizationFailure`. The script will automatically fall back to local-only evaluation (results saved to `outputs/` but not visible in the portal). To fix: ensure the storage account linked to your Foundry project allows public network access, or ask your admin to add a network rule for your IP range.
 
 ## Code Walkthrough (`07_evaluations.py`)
 

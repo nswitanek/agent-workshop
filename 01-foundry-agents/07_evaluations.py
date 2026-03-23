@@ -359,14 +359,29 @@ def run_evaluation(
     print(f"  Evaluators: {', '.join(evaluators.keys())}")
     print(f"  Data: {results_path}")
 
-    result = evaluate(
-        data=str(results_path),
-        evaluators=evaluators,
-        evaluator_config=evaluator_config,
-        azure_ai_project=project_endpoint,
-        evaluation_name=evaluation_name,
-        output_path=str(output_path),
-    )
+    try:
+        result = evaluate(
+            data=str(results_path),
+            evaluators=evaluators,
+            evaluator_config=evaluator_config,
+            azure_ai_project=project_endpoint,
+            evaluation_name=evaluation_name,
+            output_path=str(output_path),
+        )
+    except Exception as e:
+        if "AuthorizationFailure" in str(e) or "not authorized" in str(e):
+            print(
+                "\n  ⚠️  Portal upload failed (storage network access restricted)."
+                "\n  Running evaluation locally without portal upload..."
+            )
+            result = evaluate(
+                data=str(results_path),
+                evaluators=evaluators,
+                evaluator_config=evaluator_config,
+                output_path=str(output_path),
+            )
+        else:
+            raise
 
     # --- Print summary ---
     print(f"\n{'=' * 60}")

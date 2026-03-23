@@ -11,6 +11,7 @@ Build AI agents programmatically using the **Microsoft Agent Framework** (`agent
 | 3 | `03_custom_tools.py` | Building custom tools with `@tool` decorator |
 | 4 | `04_memory.py` | Advanced memory management (context providers, session state) |
 | 5 | `05_guardrails.py` | Implementing guardrails and safety measures (middleware) |
+| 6b | `06b_memory.py` | Long-term persistent memory (local file + FoundryMemoryProvider) |
 
 ## Prerequisites
 
@@ -27,8 +28,8 @@ python 01_intro_maf.py
 ## Key Concepts
 
 - **AzureOpenAIResponsesClient** — client for Azure OpenAI Responses API
-- **`as_agent()`** — converts a client into an agent with instructions and tools
+- **`create_agent()`** — creates a `ChatAgent` with instructions, tools, and context providers
 - **`@tool` decorator** — defines function tools the agent can call
-- **`BaseContextProvider`** — injects dynamic context and manages session state
+- **`ContextProvider`** — injects dynamic context and manages persistent state (memory)
 - **Middleware** — intercepts agent requests/responses for guardrails, logging, etc.
 - **Orchestration** — patterns for coordinating multiple agents (sequential, concurrent, handoff)

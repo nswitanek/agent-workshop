@@ -1,15 +1,15 @@
-# Azure AI Foundry SDK (Session 1)
-azure-ai-projects>=1.0.0b7
+# Azure AI Foundry SDK (Session 1: Foundry Agents)
+azure-ai-agents>=1.0.0
+azure-ai-projects>=2.0.0b3
 azure-identity>=1.19.0
 
-# Evaluation (Exercise 7)
+# Evaluation (Exercise 07)
 azure-ai-evaluation
+promptflow>=1.18.0
 
-# Microsoft Agent Framework (Session 2 & Capstone)
-agent-framework
+# Microsoft Agent Framework (Session 2: MAF Agents & Capstone)
+agent-framework[azure]
 
 # Utilities
 python-dotenv>=1.0.0
-
-# otel pinning 
-opentelemetry-semantic-conventions-ai==0.4.13
+requests>=2.31.0
