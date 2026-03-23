@@ -148,12 +148,12 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Maximum number of observations to return (1–100000). Default: 100000.",
+            "description": "Maximum number of observations to return. Keep this low (20–100) to avoid oversized responses. For multi-decade series, use observation_start/observation_end to narrow the date range instead of relying on limit alone.",
             "schema": {
               "type": "integer",
               "minimum": 1,
               "maximum": 100000,
-              "default": 100000
+              "default": 100
             }
           },
           {
@@ -271,7 +271,7 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 1000,
-              "default": 1000
+              "default": 20
             }
           },
           {
@@ -432,7 +432,7 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 1000,
-              "default": 1000
+              "default": 20
             }
           },
           {

@@ -180,30 +180,22 @@ With both EDGAR tools connected, the agent can now chain calls — search for a 
 
 The FRED API requires an API key, which introduces authentication configuration — the same concept as in the Copilot Studio exercise.
 
-### 1. Create a Connection for the FRED API Key
+### 1. Add the FRED API Tool
 
-Before adding the tool, set up a connection in your Foundry project so the API key is stored securely:
-
-1. In your project, go to **Connected resources** (under **Management** or in the left sidebar, depending on your portal version).
-2. Select **New connection** → **Custom keys**.
-3. Configure the connection:
-   - **Name:** `fred-api-connection`
-   - **Key name:** `api_key`
-   - **Key value:** Your FRED API key
-   - **Access:** This project only
-4. Save the connection.
-
-> **Why a connection?** In Copilot Studio, the platform prompted the user to enter the API key at runtime. In Foundry, you store it as a **connection** — a managed secret that the platform injects into API calls automatically.
-
-### 2. Add the FRED API Tool
-
-1. In the **Tools** section, select **Add tool** → **OpenAPI 3.0 specified tool**.
+1. In the **Tools** section, select **Add tool** → **Browse all tools** → Select a tool **Custom** tab → **OpenAPI tool** → **Create**.
 2. Fill in the fields:
    - **Name:** `fred_economic_data`
    - **Description:** `Access FRED economic data — interest rates, inflation, GDP, unemployment, and more.`
-3. For **Authentication**, select **Connection** and choose the `fred-api-connection` you created.
-4. In the **OpenAPI specification** box, paste the contents of [`openapi/fred-api.openapi.json`](./openapi/fred-api.openapi.json).
-5. Select **Save** (or **Add** / **Create tool**).
+3. In the **OpenAPI specification** box, paste the contents of [`openapi/fred-api.openapi.json`](./openapi/fred-api.openapi.json).
+4. For **Authentication**, select **API key connection**. Then select **Create new connection** and fill in:
+   - **Name:** `fred-api-connection`
+   - **Authentication type:** API Key
+   - **Key:** Your FRED API key
+   - **Access:** This project only
+5. Save the connection, then select it in the authentication dropdown.
+6. Select **Save** (or **Add** / **Create tool**).
+
+> **Connection created inline:** Unlike creating a connection separately under Connected Resources, here you create it directly in the tool configuration flow. The result is the same — A managed secret that the platform injects into API calls automatically. You can also reuse this connection for other tools later.
 
 The platform registers all five `operationId`s as callable functions:
    - **getSeries** — Get metadata for an economic data series
@@ -212,7 +204,7 @@ The platform registers all five `operationId`s as callable functions:
    - **getCategory** — Get category metadata
    - **getCategorySeries** — Get series within a category
 
-### 3. Test the FRED Tool
+### 2. Test the FRED Tool
 
 | Prompt | Expected Behavior |
 |--------|-------------------|
@@ -351,6 +343,16 @@ The SEC blocks automated requests that don't include a `User-Agent` header ident
    # Should return 403:
    curl "https://efts.sec.gov/LATEST/search-index?q=%22nvidia%22&forms=10-K&size=2"
    ```
+
+### Foundry guardrail blocks the response
+
+If you see *"This interaction was blocked by a safety and security control in this asset's Foundry guardrail"*, this is a project-level content filter, not an API error. Common causes:
+
+1. **Response too large.** The FRED API can return thousands of observations if the agent doesn't constrain the date range. The specs in this repo default to `limit=100` for observations, but if the agent still fetches too much data, the guardrail may block processing. Try a more specific query: `"What is the current federal funds rate?"` instead of `"Show me all GDP data"`.
+
+2. **Project guardrail configuration.** Your Foundry project may have strict content safety settings. In the Azure AI Foundry portal, check your project's **Safety + security** or **Guardrails** configuration and verify that financial/economic queries are permitted.
+
+3. **Workaround:** Use the function-tool approach ([`04_function_calling.py`](./04_function_calling.py)) where you control the API calls and can pre-filter data before it reaches the model.
 
 ### FRED API returns errors
 
