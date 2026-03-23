@@ -18,7 +18,7 @@ Understanding the relationship between an OpenAPI spec, its endpoints, and a "to
 
 ### One spec file → One tool → Multiple functions
 
-When you upload an OpenAPI spec to Foundry, you give it a single **tool name** (e.g., `sec_edgar_data`). This might seem limiting because a spec like `sec-edgar.openapi.json` defines *four* endpoints (`getCompanySubmissions`, `getCompanyFacts`, `getCompanyConcept`, `getXBRLFrame`). The resolution:
+When you upload an OpenAPI spec to Foundry, you give it a single **tool name** (e.g., `sec_edgar_data`). This might seem limiting because a spec like `sec-edgar.openapi.json` defines *three* endpoints (`getCompanySubmissions`, `getCompanyConcept`, `getXBRLFrame`). The resolution:
 
 - The **tool name** is a logical grouping — it tells the platform "these endpoints belong together."
 - Each **`operationId`** in the spec becomes a separate callable function that the agent can invoke independently.
@@ -29,7 +29,7 @@ Think of it like this:
 | Level | What it is | Example |
 |-------|-----------|---------|
 | **Tool** | A named bundle — one spec file with one auth config | `sec_edgar_data` |
-| **Function** | An individual endpoint the agent can call (= one `operationId`) | `getCompanySubmissions`, `getCompanyFacts`, etc. |
+| **Function** | An individual endpoint the agent can call (= one `operationId`) | `getCompanySubmissions`, `getCompanyConcept`, etc. |
 
 So when the portal asks for a **Name**, you're naming the *tool* (the bundle), not a single endpoint. The platform automatically discovers all `operationId`s inside the spec and registers each one as a function the agent can call.
 
@@ -45,7 +45,7 @@ Every path/method in your OpenAPI spec **must** have an `operationId`. This is w
 
 | Spec file | Tool name (you choose) | operationIds (auto-discovered) |
 |-----------|----------------------|-------------------------------|
-| `sec-edgar.openapi.json` | `sec_edgar_data` | `getCompanySubmissions`, `getCompanyFacts`, `getCompanyConcept`, `getXBRLFrame` |
+| `sec-edgar.openapi.json` | `sec_edgar_data` | `getCompanySubmissions`, `getCompanyConcept`, `getXBRLFrame` |
 | `sec-edgar-search.openapi.json` | `sec_edgar_search` | `searchFilings` |
 | `fred-api.openapi.json` | `fred_economic_data` | `getSeries`, `getSeriesObservations`, `searchSeries`, `getCategory`, `getCategorySeries` |
 
@@ -113,7 +113,7 @@ The SEC EDGAR Data API provides free access to company filings and XBRL financia
 ### 2. Add the EDGAR Data API Tool
 
 1. In the agent configuration, find the **Tools** section (or **Action tools** panel).
-2. Select **Add tool** → **OpenAPI 3.0 specified tool**.
+2. Select **Add tool** → **Browse all tools** → Select a tool **Custom** tab → **OpenAPI tool**.
 3. Fill in the fields:
    - **Name:** `sec_edgar_data` — this is the *tool-level* label (it groups all endpoints in the spec under one name)
    - **Description:** `Access SEC EDGAR to retrieve company filing history and XBRL financial data by CIK number.`
@@ -124,9 +124,10 @@ The SEC EDGAR Data API provides free access to company filings and XBRL financia
 
 The platform parses the spec and registers each `operationId` as a callable function:
    - **getCompanySubmissions** — Get company filing history by CIK
-   - **getCompanyFacts** — Get all XBRL financial facts for a company
    - **getCompanyConcept** — Get a specific financial concept over time
    - **getXBRLFrame** — Get cross-company data for a concept and period
+
+> **Note:** The `getCompanyFacts` endpoint (which returns *all* XBRL data for a company) is intentionally excluded from this spec. Its responses are 3–5 MB per company, which exceeds the platform's message size limit. Use `getCompanyConcept` instead to retrieve specific financial metrics (e.g., Revenue, Assets, NetIncomeLoss).
 
 > **Don't be confused** by the single "Name" field — you are naming the *tool bundle*, not a single endpoint. The agent will see all four `operationId`s and choose which to call based on the user's question.
 
@@ -137,8 +138,8 @@ In the agent's chat panel, try these prompts:
 | Prompt | Expected Behavior |
 |--------|-------------------|
 | `Look up Apple's recent SEC filings` | Calls getCompanySubmissions with CIK 0000320193 |
-| `What are the available financial data points for Microsoft?` | Calls getCompanyFacts with CIK 0000789019 |
-| `Show me Amazon's revenue over the last 5 years` | Calls getCompanyConcept for Revenues |
+| `Show me Microsoft's revenue over the last 5 years` | Calls getCompanyConcept for us-gaap/Revenues with CIK 0000789019 |
+| `What was Amazon's net income trend?` | Calls getCompanyConcept for us-gaap/NetIncomeLoss |
 
 > **Note:** The agent may struggle to find CIKs by name alone. That's expected — in Part B you'll add the search tool.
 
@@ -169,7 +170,7 @@ With both EDGAR tools connected, the agent can now chain calls — search for a 
 | `What is the CIK number for Tesla?` | searchFilings → extracts CIK |
 | `Look up Nvidia's recent 10-K filings` | searchFilings → getCompanySubmissions |
 | `What was Tesla's revenue last year?` | searchFilings (CIK) → getCompanyConcept (Revenue) |
-| `What financial data is available for JPMorgan?` | searchFilings (CIK) → getCompanyFacts |
+| `What financial data is available for JPMorgan?` | searchFilings (CIK) → getCompanySubmissions |
 
 > **Tip:** Notice how tool chaining works identically to Copilot Studio — the agent decides the sequence of API calls based on the user's question and the tool descriptions.
 
@@ -230,7 +231,7 @@ Now that all three OpenAPI tools are connected, test prompts that require the ag
 |--------|---------------|
 | `I'm assessing going-concern risk for a retail company. What's the current economic outlook?` | FRED (GDP, UNRATE, FEDFUNDS) |
 | `Look up Tesla's revenue trend and compare against GDP growth` | EDGAR Search → EDGAR Data + FRED |
-| `What were Nvidia's total assets in their latest filing?` | EDGAR Search → EDGAR Data |
+| `What were Nvidia's total assets in their latest filing?` | EDGAR Search → EDGAR Data (getCompanyConcept) |
 | `For an audit of a bank, what interest rate data should I consider?` | FRED (FEDFUNDS, DGS10, MORTGAGE30US) |
 | `Pull Apple's net income and compare it against the unemployment rate` | EDGAR Data + FRED |
 
@@ -310,6 +311,12 @@ python 04_openapi_tools.py
 | `MORTGAGE30US` | 30-Year Fixed Rate Mortgage Average |
 
 ## Troubleshooting
+
+### "Received message exceeds the maximum configured message size"
+
+Some SEC EDGAR endpoints return very large responses. The `getCompanyFacts` endpoint in particular returns **all** XBRL-tagged financial data for a company (3–5 MB for major companies like Microsoft, Apple, or Tesla). This exceeds the Foundry platform's message size limit.
+
+**Fix applied in this repo:** The `getCompanyFacts` endpoint has been removed from the OpenAPI spec. Use `getCompanyConcept` instead — it retrieves a specific financial metric (e.g., Revenue, Assets, NetIncomeLoss) and returns ~5 KB per request. If you need to explore what concepts are available for a company, use the function-tool approach in [`04_function_calling.py`](./04_function_calling.py) where you can truncate or filter the response in your own code.
 
 ### "Too many requests" / "Undeclared Automated Tool" errors from SEC EDGAR
 
