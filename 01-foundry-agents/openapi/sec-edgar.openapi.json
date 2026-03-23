@@ -23,6 +23,16 @@
         "description": "Retrieve the filing history and metadata for a company by its 10-digit CIK number. Returns company name, ticker symbols, stock exchanges, SIC code, and at least one year of recent filings (up to 1,000). Filings include form type, filing date, accession number, and primary document URL.",
         "parameters": [
           {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "description": "SEC requires a descriptive User-Agent header identifying the caller (company name and email). Requests without this header are blocked.",
+            "schema": {
+              "type": "string",
+              "default": "AgentWorkshop/1.0 (workshop@example.com)"
+            }
+          },
+          {
             "name": "cik",
             "in": "path",
             "required": true,
@@ -119,6 +129,16 @@
         "description": "Retrieve all XBRL-tagged financial data for a company in a single call. Returns all reported concepts (e.g., Revenue, Assets, NetIncome) organized by taxonomy (us-gaap, ifrs, dei) with values for each reporting period. Useful for financial analysis and ratio computation.",
         "parameters": [
           {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "description": "SEC requires a descriptive User-Agent header identifying the caller (company name and email). Requests without this header are blocked.",
+            "schema": {
+              "type": "string",
+              "default": "AgentWorkshop/1.0 (workshop@example.com)"
+            }
+          },
+          {
             "name": "cik",
             "in": "path",
             "required": true,
@@ -187,6 +207,16 @@
         "summary": "Get a specific financial concept for a company",
         "description": "Retrieve all disclosures for a single XBRL concept (e.g., us-gaap/Revenue, us-gaap/Assets) for a specific company. Returns historical values across all filings, separated by unit of measure. Useful for tracking a specific metric over time.",
         "parameters": [
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "description": "SEC requires a descriptive User-Agent header identifying the caller (company name and email). Requests without this header are blocked.",
+            "schema": {
+              "type": "string",
+              "default": "AgentWorkshop/1.0 (workshop@example.com)"
+            }
+          },
           {
             "name": "cik",
             "in": "path",
@@ -268,6 +298,16 @@
         "summary": "Get cross-company data for a concept and period",
         "description": "Retrieve a single fact per reporting entity for a specific XBRL concept, unit, and calendar period. Useful for cross-company comparison (e.g., all companies' revenue for a given year or quarter). Period format: CY2023 (annual), CY2023Q1 (quarterly), CY2023Q1I (instantaneous).",
         "parameters": [
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "description": "SEC requires a descriptive User-Agent header identifying the caller (company name and email). Requests without this header are blocked.",
+            "schema": {
+              "type": "string",
+              "default": "AgentWorkshop/1.0 (workshop@example.com)"
+            }
+          },
           {
             "name": "taxonomy",
             "in": "path",

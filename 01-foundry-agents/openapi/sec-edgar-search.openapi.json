@@ -23,6 +23,16 @@
         "description": "Search SEC EDGAR filings by company name, ticker, form type, and date range. Returns matching filings along with an entity_filter aggregation that lists matching companies with their CIK numbers and ticker symbols. Use this to look up a company's CIK number from its name or ticker — the CIK is needed by the SEC EDGAR Data API endpoints (getCompanySubmissions, getCompanyFacts, etc.). To look up a company CIK, search with the company name in quotes and set size to 0 to get only the entity aggregation without individual filing results.",
         "parameters": [
           {
+            "name": "User-Agent",
+            "in": "header",
+            "required": true,
+            "description": "SEC requires a descriptive User-Agent header identifying the caller (company name and email). Requests without this header are blocked.",
+            "schema": {
+              "type": "string",
+              "default": "AgentWorkshop/1.0 (workshop@example.com)"
+            }
+          },
+          {
             "name": "q",
             "in": "query",
             "required": true,

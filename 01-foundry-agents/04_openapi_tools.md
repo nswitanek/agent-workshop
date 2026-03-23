@@ -12,6 +12,45 @@ This is the closest 1:1 parallel between the two platforms.
 - How to test tool invocation and multi-tool chaining in the portal
 - How to do the same thing programmatically with the `OpenApiTool` SDK class
 
+## Key Concept: What *Is* an OpenAPI Tool?
+
+Understanding the relationship between an OpenAPI spec, its endpoints, and a "tool" is important — the portal interface can make this confusing at first.
+
+### One spec file → One tool → Multiple functions
+
+When you upload an OpenAPI spec to Foundry, you give it a single **tool name** (e.g., `sec_edgar_data`). This might seem limiting because a spec like `sec-edgar.openapi.json` defines *four* endpoints (`getCompanySubmissions`, `getCompanyFacts`, `getCompanyConcept`, `getXBRLFrame`). The resolution:
+
+- The **tool name** is a logical grouping — it tells the platform "these endpoints belong together."
+- Each **`operationId`** in the spec becomes a separate callable function that the agent can invoke independently.
+- The agent sees all the `operationId`s, reads their descriptions and parameters, and decides which one(s) to call.
+
+Think of it like this:
+
+| Level | What it is | Example |
+|-------|-----------|---------|
+| **Tool** | A named bundle — one spec file with one auth config | `sec_edgar_data` |
+| **Function** | An individual endpoint the agent can call (= one `operationId`) | `getCompanySubmissions`, `getCompanyFacts`, etc. |
+
+So when the portal asks for a **Name**, you're naming the *tool* (the bundle), not a single endpoint. The platform automatically discovers all `operationId`s inside the spec and registers each one as a function the agent can call.
+
+### Why `operationId` matters
+
+Every path/method in your OpenAPI spec **must** have an `operationId`. This is what the agent uses to decide which endpoint to invoke. The `operationId` becomes the function name the model "sees," so use descriptive names:
+
+- ✅ `getCompanySubmissions` — clear what it does
+- ✅ `searchFilings` — action-oriented
+- ❌ `endpoint1` — the model can't reason about this
+
+### Our specs at a glance
+
+| Spec file | Tool name (you choose) | operationIds (auto-discovered) |
+|-----------|----------------------|-------------------------------|
+| `sec-edgar.openapi.json` | `sec_edgar_data` | `getCompanySubmissions`, `getCompanyFacts`, `getCompanyConcept`, `getXBRLFrame` |
+| `sec-edgar-search.openapi.json` | `sec_edgar_search` | `searchFilings` |
+| `fred-api.openapi.json` | `fred_economic_data` | `getSeries`, `getSeriesObservations`, `searchSeries`, `getCategory`, `getCategorySeries` |
+
+> **Portal vs. SDK terminology:** In the portal you fill in a "Name" field. In the SDK, this maps to the `name` parameter in `OpenApiFunctionDefinition`. Either way, it's a label for the *tool* — the individual endpoints are identified by their `operationId`s inside the spec.
+
 ## Copilot Studio vs. Foundry Portal — Side by Side
 
 | Aspect | Copilot Studio | Foundry Portal |
@@ -35,6 +74,8 @@ This is the closest 1:1 parallel between the two platforms.
   - [`openapi/sec-edgar-search.openapi.json`](./openapi/sec-edgar-search.openapi.json) — company CIK lookup
   - [`openapi/fred-api.openapi.json`](./openapi/fred-api.openapi.json) — economic indicators
 
+> **⚠️ SEC EDGAR `User-Agent` Requirement:** The SEC blocks automated requests that don't include a descriptive `User-Agent` header (company name + email). The OpenAPI specs in this repo include a `User-Agent` header parameter with a default value (`AgentWorkshop/1.0 (workshop@example.com)`). If you see "Too many requests" or similar errors, this is why — see the [Troubleshooting](#troubleshooting) section at the end of this exercise.
+
 ---
 
 ## Part A: SEC EDGAR Data API (Anonymous Authentication)
@@ -44,31 +85,50 @@ The SEC EDGAR Data API provides free access to company filings and XBRL financia
 ### 1. Open Your Agent
 
 1. Go to [ai.azure.com](https://ai.azure.com) and open your project.
-2. Navigate to **Build** → **Agents**.
-3. Open an existing agent or create a new one called `AuditResearchAssistant-<your-initials>`.
+2. In the left sidebar (or top navigation), open the **Agents** section.
+3. Open an existing agent or select **Create agent** to make a new one called `AuditResearchAssistant-<your-initials>`.
 4. Set the **Instructions** to:
 
    ```
    You are an Audit Research Assistant at a professional services firm. You have
-   access to SEC EDGAR and FRED economic data tools. When a user asks about a
-   company's SEC filings or financial data, first search for the company's CIK
-   number, then use the EDGAR data tools to retrieve filings and financial facts.
-   When asked about economic conditions, use the FRED tools. Always explain what
-   data you retrieved and how it relates to audit risk assessment.
+   access to three tools:
+
+   1. sec_edgar_search — Search SEC EDGAR by company name or ticker to find CIK
+      numbers. Use this FIRST when a user asks about a company.
+   2. sec_edgar_data — Retrieve SEC filing history and XBRL financial data
+      (revenue, assets, net income, etc.) by CIK number.
+   3. fred_economic_data — Retrieve economic indicators such as interest rates,
+      inflation, GDP, unemployment, and mortgage rates from FRED.
+
+   Workflow:
+   - When asked about a company, use sec_edgar_search to find the CIK, then use
+     sec_edgar_data to pull filings or financial facts.
+   - When asked about economic conditions, use fred_economic_data.
+   - Always explain what data you retrieved and how it relates to audit risk
+     assessment.
    ```
+
+   > **Why name the tools in the instructions?** The tool names here — `sec_edgar_search`, `sec_edgar_data`, `fred_economic_data` — match the names you'll enter when adding each OpenAPI tool in the steps below. Referencing them explicitly helps the model understand which tool to reach for.
 
 ### 2. Add the EDGAR Data API Tool
 
-1. In the agent configuration, find the **Tools** section.
-2. Select **Add tool** → **OpenAPI**.
-3. Upload the file [`openapi/sec-edgar.openapi.json`](./openapi/sec-edgar.openapi.json).
-4. Review the detected endpoints:
+1. In the agent configuration, find the **Tools** section (or **Action tools** panel).
+2. Select **Add tool** → **OpenAPI 3.0 specified tool**.
+3. Fill in the fields:
+   - **Name:** `sec_edgar_data` — this is the *tool-level* label (it groups all endpoints in the spec under one name)
+   - **Description:** `Access SEC EDGAR to retrieve company filing history and XBRL financial data by CIK number.`
+4. For **Authentication**, select **Anonymous** (no authentication required).
+5. In the **OpenAPI specification** box, paste the contents of [`openapi/sec-edgar.openapi.json`](./openapi/sec-edgar.openapi.json).
+   > You can also upload the file if the portal offers a file-upload option.
+6. Select **Save** (or **Add** / **Create tool**, depending on your portal version).
+
+The platform parses the spec and registers each `operationId` as a callable function:
    - **getCompanySubmissions** — Get company filing history by CIK
    - **getCompanyFacts** — Get all XBRL financial facts for a company
    - **getCompanyConcept** — Get a specific financial concept over time
    - **getXBRLFrame** — Get cross-company data for a concept and period
-5. For **Authentication**, select **Anonymous** (no authentication required).
-6. Save the tool configuration.
+
+> **Don't be confused** by the single "Name" field — you are naming the *tool bundle*, not a single endpoint. The agent will see all four `operationId`s and choose which to call based on the user's question.
 
 ### 3. Test the EDGAR Data Tool
 
@@ -90,12 +150,15 @@ The EDGAR Data API endpoints require a CIK number, but users typically know comp
 
 ### 1. Add the EDGAR Search Tool
 
-1. In the **Tools** section, select **Add tool** → **OpenAPI**.
-2. Upload the file [`openapi/sec-edgar-search.openapi.json`](./openapi/sec-edgar-search.openapi.json).
-3. Review the single detected endpoint:
-   - **searchFilings** — Search EDGAR filings by company name, ticker, or keywords
-4. For **Authentication**, select **Anonymous**.
-5. Save the tool configuration.
+1. In the **Tools** section, select **Add tool** → **OpenAPI 3.0 specified tool**.
+2. Fill in the fields:
+   - **Name:** `sec_edgar_search`
+   - **Description:** `Search SEC EDGAR filings by company name or ticker to find CIK numbers.`
+3. For **Authentication**, select **Anonymous**.
+4. In the **OpenAPI specification** box, paste the contents of [`openapi/sec-edgar-search.openapi.json`](./openapi/sec-edgar-search.openapi.json).
+5. Select **Save** (or **Add** / **Create tool**).
+
+This spec has just one `operationId` — **searchFilings** — so the tool and function are essentially 1:1 here.
 
 ### 2. Test Tool Chaining
 
@@ -120,7 +183,7 @@ The FRED API requires an API key, which introduces authentication configuration 
 
 Before adding the tool, set up a connection in your Foundry project so the API key is stored securely:
 
-1. In your project, go to **Management** → **Connected resources**.
+1. In your project, go to **Connected resources** (under **Management** or in the left sidebar, depending on your portal version).
 2. Select **New connection** → **Custom keys**.
 3. Configure the connection:
    - **Name:** `fred-api-connection`
@@ -133,14 +196,20 @@ Before adding the tool, set up a connection in your Foundry project so the API k
 
 ### 2. Add the FRED API Tool
 
-1. In the **Tools** section, select **Add tool** → **OpenAPI**.
-2. Upload the file [`openapi/fred-api.openapi.json`](./openapi/fred-api.openapi.json).
-3. Review the detected endpoints:
+1. In the **Tools** section, select **Add tool** → **OpenAPI 3.0 specified tool**.
+2. Fill in the fields:
+   - **Name:** `fred_economic_data`
+   - **Description:** `Access FRED economic data — interest rates, inflation, GDP, unemployment, and more.`
+3. For **Authentication**, select **Connection** and choose the `fred-api-connection` you created.
+4. In the **OpenAPI specification** box, paste the contents of [`openapi/fred-api.openapi.json`](./openapi/fred-api.openapi.json).
+5. Select **Save** (or **Add** / **Create tool**).
+
+The platform registers all five `operationId`s as callable functions:
    - **getSeries** — Get metadata for an economic data series
    - **getSeriesObservations** — Get actual data values for a series
    - **searchSeries** — Search for series by keywords
-4. For **Authentication**, select **Connection** and choose the `fred-api-connection` you created.
-5. Save the tool configuration.
+   - **getCategory** — Get category metadata
+   - **getCategorySeries** — Get series within a category
 
 ### 3. Test the FRED Tool
 
@@ -240,9 +309,46 @@ python 04_openapi_tools.py
 | `SP500` | S&P 500 Index |
 | `MORTGAGE30US` | 30-Year Fixed Rate Mortgage Average |
 
+## Troubleshooting
+
+### "Too many requests" / "Undeclared Automated Tool" errors from SEC EDGAR
+
+The SEC blocks automated requests that don't include a `User-Agent` header identifying the caller. The error page title is *"Your Request Originates from an Undeclared Automated Tool"* but may surface in the agent as "Too many requests" or a generic tool-call failure.
+
+**What happens:** The Foundry platform makes HTTP requests on the agent's behalf when using OpenAPI tools. If the platform doesn't send the `User-Agent` header (or sends a generic one), the SEC returns HTTP 403.
+
+**Fix applied in this repo:** The OpenAPI specs include a `User-Agent` header parameter with a default value of `AgentWorkshop/1.0 (workshop@example.com)`. If the Foundry platform honors this parameter, requests will include the required header automatically.
+
+**If you still see errors:**
+
+1. **Try the function-tool approach instead.** [`04_function_calling.py`](./04_function_calling.py) makes SEC API calls from your own code using the `requests` library, where you control the `User-Agent` header directly. This is the most reliable path.
+
+2. **Rate-limit awareness.** Even with a valid `User-Agent`, the SEC enforces a limit of **10 requests per second** per IP address. In a workshop setting with multiple participants on the same network, you may collectively exceed this limit. Space out your test queries.
+
+3. **Verify the header is reaching SEC.** Test directly:
+   ```bash
+   # Should return JSON (200 OK):
+   curl -H "User-Agent: YourName (your@email.com)" \
+     "https://efts.sec.gov/LATEST/search-index?q=%22nvidia%22&forms=10-K&size=2"
+
+   # Should return 403:
+   curl "https://efts.sec.gov/LATEST/search-index?q=%22nvidia%22&forms=10-K&size=2"
+   ```
+
+### FRED API returns errors
+
+- Verify your FRED API key is valid and the connection is configured correctly.
+- The FRED API key must be passed as a query parameter named `api_key`. The connection you created should map to this.
+
+### Portal UI doesn't match these instructions
+
+The Azure AI Foundry portal evolves frequently. The exact menu labels ("Add tool", "OpenAPI 3.0 specified tool", "Action tools") may differ from what's shown here. Look for the OpenAPI / REST API tool option in your agent's tool configuration area. The core workflow — name the tool, paste the spec, choose auth — remains the same across portal versions.
+
 ## Key Takeaways
 
-- **OpenAPI tools in Foundry work just like Copilot Studio** — upload a spec, configure auth, and the platform handles execution
+- **One OpenAPI spec = one tool, many functions.** The tool `name` in the portal (or SDK) is a logical grouping. Each `operationId` in the spec becomes a separate function the agent can call independently.
+- **`operationId` is required** on every endpoint — it becomes the function name the model reasons about. Use descriptive names.
+- **OpenAPI tools in Foundry work just like Copilot Studio** — provide a spec, configure auth, and the platform handles execution
 - **The same OpenAPI spec files** work in both platforms — no modifications needed
 - **Authentication patterns are equivalent** — no-auth/anonymous, API key via connection, or managed identity
 - **Tool chaining is automatic** — both platforms let the agent decide the sequence of API calls
