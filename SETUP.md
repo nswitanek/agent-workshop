@@ -232,9 +232,31 @@ Complete this before the workshop.
 ## 2.1 Required Software
 
 - [ ] **Python 3.10+** — `python --version`
+- [ ] **uv** — fast Python package manager (recommended) — `uv --version`
 - [ ] **Git** — `git --version`
 - [ ] **Azure CLI** — `az --version`
 - [ ] **VS Code** with Copilot Studio extension
+
+### Install uv
+
+**uv** is a fast Python package and environment manager. It replaces `pip` + `venv` with a single tool that's 10–100× faster.
+
+macOS / Linux:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Windows (PowerShell):
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Verify:
+```bash
+uv --version   # Should print uv 0.x.x or later
+```
+
+> **Alternative:** If you prefer not to install uv, you can use standard `pip` + `venv` instead — instructions are provided alongside the uv commands below.
 
 ## 2.2 Azure Authentication
 
@@ -257,8 +279,36 @@ az account show  # Should show the workshop subscription
 ```bash
 git clone <repo-url>
 cd agent-workshop
+```
+
+### With uv (recommended)
+
+```bash
+# Create virtual environment and install all dependencies in one step
+uv venv
+source .venv/bin/activate        # macOS / Linux
+# .venv\Scripts\activate         # Windows PowerShell
+
+uv pip install --pre -r requirements.txt
+```
+
+### With pip + venv (alternative)
+
+macOS / Linux:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+Windows PowerShell:
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+> **Note:** The `--pre` flag (used with uv) allows installing pre-release packages, which some workshop dependencies require.
 
 ## 2.6 Environment Variables
 
