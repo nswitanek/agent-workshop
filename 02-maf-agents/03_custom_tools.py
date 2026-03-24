@@ -1,11 +1,11 @@
 """
 03 — Building Custom Tools and Capabilities
 
-Demonstrates defining tools for MAF agents using the @tool decorator.
+Demonstrates defining tools for MAF agents using the @ai_function decorator.
 Tools simulate engagement data lookup and materiality calculation for
 an audit practice. Also shows FunctionMiddleware for logging tool calls.
 
-Concepts: @tool decorator, Annotated types, Pydantic Field, tool approval,
+Concepts: @ai_function decorator, Annotated types, Pydantic Field,
           FunctionMiddleware for tool invocation logging
 
 Reference: https://github.com/microsoft/agent-framework/tree/main/python/samples/02-agents/tools
@@ -19,7 +19,7 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Annotated
 
-from agent_framework import FunctionInvocationContext, FunctionMiddleware, tool
+from agent_framework import FunctionInvocationContext, FunctionMiddleware, ai_function
 from agent_framework.azure import AzureOpenAIResponsesClient
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
@@ -39,10 +39,10 @@ with open(os.path.join(SCRIPT_DIR, "data", "engagement_data.json")) as f:
 
 
 # ---------------------------------------------------------------------------
-# Tools — defined with the MAF @tool decorator
+# Tools — defined with the MAF @ai_function decorator
 # ---------------------------------------------------------------------------
 
-@tool(approval_mode="never_require")
+@ai_function()
 def lookup_engagement(
     client_name: Annotated[str, Field(description="The client name to look up")],
 ) -> str:
@@ -53,7 +53,7 @@ def lookup_engagement(
     return json.dumps({"error": f"No engagement found for '{client_name}'"})
 
 
-@tool(approval_mode="never_require")
+@ai_function()
 def calculate_materiality(
     benchmark_amount: Annotated[float, Field(description="The benchmark amount (e.g., total revenue)")],
     benchmark_type: Annotated[str, Field(description="Type of benchmark: 'revenue', 'assets', or 'income'")],
@@ -112,14 +112,14 @@ class ToolInvocationLogger(FunctionMiddleware):
 
 async def main():
     client = AzureOpenAIResponsesClient(
-        project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-        deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        endpoint=os.environ.get("AZURE_AI_PROJECT_ENDPOINT") or os.environ["PROJECT_ENDPOINT"],
+        deployment_name=os.environ.get("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME") or os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-5-mini"),
         credential=AzureCliCredential(),
     )
 
     tool_logger = ToolInvocationLogger()
 
-    agent = client.as_agent(
+    agent = client.create_agent(
         name="EngagementToolsAgent",
         instructions=(
             "You are an audit engagement manager. Use the available tools to look up "
@@ -134,11 +134,13 @@ async def main():
     print("Agent with Custom Tools + FunctionMiddleware Logging")
     print("=" * 60)
 
+    thread = agent.get_new_thread()
     result = await agent.run(
         "Look up the engagement for Meridian Healthcare, then calculate materiality "
-        "using their revenue as the benchmark. Assume medium risk."
+        "using their revenue as the benchmark. Assume medium risk.",
+        thread=thread,
     )
-    print(f"\nAgent:\n{result}")
+    print(f"\nAgent:\n{result.text}")
 
     # Print summary of tool calls
     print(f"\n--- Tool Call Summary ---")
@@ -150,7 +152,7 @@ async def main():
     out_path = "02-maf-agents/outputs/03_custom_tools.md"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write("# 03 — Custom Tools\n\n")
-        f.write(f"## Agent Response\n\n{result}\n\n")
+        f.write(f"## Agent Response\n\n{result.text}\n\n")
         f.write("## Tool Call Log\n\n")
         for entry in tool_logger.call_log:
             f.write(f"- **{entry['tool']}**: {entry['duration_ms']}ms\n")

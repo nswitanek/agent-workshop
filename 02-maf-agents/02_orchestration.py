@@ -17,14 +17,16 @@ import logging
 import os
 from typing import Any, cast
 
-from agent_framework import AgentResponse, Message, WorkflowEvent, WorkflowRunState
-from agent_framework.azure import AzureOpenAIResponsesClient
-from agent_framework.orchestrations import (
+from agent_framework import (
+    ChatMessage,
     ConcurrentBuilder,
     HandoffBuilder,
-    HandoffAgentUserRequest,
+    HandoffUserInputRequest,
     SequentialBuilder,
+    WorkflowEvent,
+    WorkflowRunState,
 )
+from agent_framework.azure import AzureOpenAIResponsesClient
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
@@ -39,7 +41,7 @@ load_dotenv()
 # Helpers
 # ---------------------------------------------------------------------------
 
-def print_conversation(messages: list[Message], title: str = "Conversation") -> str:
+def print_conversation(messages: list[ChatMessage], title: str = "Conversation") -> str:
     """Pretty-print a list of Messages and return them as a string."""
     lines: list[str] = [f"\n===== {title} ====="]
     for i, msg in enumerate(messages, start=1):
@@ -53,8 +55,8 @@ def print_conversation(messages: list[Message], title: str = "Conversation") -> 
 
 async def main():
     client = AzureOpenAIResponsesClient(
-        project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-        deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        endpoint=os.environ.get("AZURE_AI_PROJECT_ENDPOINT") or os.environ["PROJECT_ENDPOINT"],
+        deployment_name=os.environ.get("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME") or os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-5-mini"),
         credential=AzureCliCredential(),
     )
 
@@ -76,7 +78,7 @@ async def main():
     print("PATTERN 1: Sequential (Analyst → Reviewer)")
     print("=" * 60)
 
-    analyst = client.as_agent(
+    analyst = client.create_agent(
         name="AuditAnalyst",
         instructions=(
             "You are a junior audit analyst. Draft a brief summary of key audit "
@@ -84,7 +86,7 @@ async def main():
         ),
     )
 
-    reviewer = client.as_agent(
+    reviewer = client.create_agent(
         name="AuditReviewer",
         instructions=(
             "You are a senior audit reviewer. Review the analyst's draft findings "
@@ -99,7 +101,7 @@ async def main():
     # Run with streaming — the final "output" event carries the full conversation
     async for event in sequential_wf.run(f"Scenario: {scenario}", stream=True):
         if event.type == "output":
-            conversation = cast(list[Message], event.data)
+            conversation = cast(list[ChatMessage], event.data)
             text = print_conversation(conversation, "Sequential — Final Conversation")
             output_parts.append("## Pattern 1: Sequential\n" + text)
 
@@ -113,17 +115,17 @@ async def main():
     print("PATTERN 2: Concurrent (Parallel Risk Assessment)")
     print("=" * 60)
 
-    financial_risk_agent = client.as_agent(
+    financial_risk_agent = client.create_agent(
         name="FinancialRiskAssessor",
         instructions="You assess financial reporting risks. Provide 2-3 bullet points. Be concise.",
     )
 
-    it_risk_agent = client.as_agent(
+    it_risk_agent = client.create_agent(
         name="ITRiskAssessor",
         instructions="You assess IT and cybersecurity risks for audits. Provide 2-3 bullet points. Be concise.",
     )
 
-    compliance_risk_agent = client.as_agent(
+    compliance_risk_agent = client.create_agent(
         name="ComplianceRiskAssessor",
         instructions="You assess regulatory compliance risks. Provide 2-3 bullet points. Be concise.",
     )
@@ -142,7 +144,7 @@ async def main():
     if outputs:
         print("\n===== Concurrent — Aggregated Results =====")
         for output in outputs:
-            messages: list[Message] | Any = output
+            messages: list[ChatMessage] | Any = output
             for msg in messages:
                 name = msg.author_name or "assistant"
                 entry = f"\n{'-' * 50}\n[{name}]:\n{msg.text}"
@@ -161,7 +163,7 @@ async def main():
     print("PATTERN 3: Handoff (Triage → Specialist)")
     print("=" * 60)
 
-    triage_agent = client.as_agent(
+    triage_agent = client.create_agent(
         name="TriageAgent",
         instructions=(
             "You are a triage agent for a professional services firm. "
@@ -170,17 +172,17 @@ async def main():
         ),
     )
 
-    audit_specialist = client.as_agent(
+    audit_specialist = client.create_agent(
         name="AuditSpecialist",
         instructions="You are an audit specialist. Answer audit questions concisely.",
     )
 
-    tax_specialist = client.as_agent(
+    tax_specialist = client.create_agent(
         name="TaxSpecialist",
         instructions="You are a tax specialist. Answer tax questions concisely.",
     )
 
-    advisory_specialist = client.as_agent(
+    advisory_specialist = client.create_agent(
         name="AdvisorySpecialist",
         instructions="You are an advisory specialist. Answer consulting questions concisely.",
     )
@@ -222,7 +224,7 @@ async def main():
                 handoff_lines.append(line)
             elif event.type == "output":
                 data = event.data
-                if isinstance(data, AgentResponse):
+                if hasattr(data, "messages"):
                     for msg in data.messages:
                         if msg.text:
                             speaker = msg.author_name or msg.role
@@ -238,7 +240,7 @@ async def main():
                         line = f"  - {speaker}: {text}"
                         print(line)
                         handoff_lines.append(line)
-            elif event.type == "request_info" and isinstance(event.data, HandoffAgentUserRequest):
+            elif event.type == "request_info" and isinstance(event.data, HandoffUserInputRequest):
                 # Print the agent's response that precedes the user-input request
                 if event.data.agent_response:
                     for msg in event.data.agent_response.messages:
@@ -256,7 +258,7 @@ async def main():
 
     # If the workflow wants more user input, terminate gracefully
     if pending:
-        responses = {req.request_id: HandoffAgentUserRequest.terminate() for req in pending}
+        responses = {req.request_id: HandoffUserInputRequest.terminate() for req in pending}
         followup_events = await handoff_wf.run(responses=responses)
         _process_handoff_events(followup_events)
 

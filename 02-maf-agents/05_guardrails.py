@@ -6,7 +6,7 @@ Demonstrates MAF's AgentMiddleware for implementing guardrails:
   2. PII redaction — removes sensitive data from agent responses
   3. Audit logging — logs all agent interactions for compliance
 
-Concepts: AgentMiddleware, AgentContext, MiddlewareTermination, middleware pipeline
+Concepts: AgentMiddleware, AgentRunContext, context.terminate, middleware pipeline
 
 Reference: https://github.com/microsoft/agent-framework/tree/main/python/samples/02-agents/middleware
 """
@@ -19,11 +19,10 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 
 from agent_framework import (
-    AgentContext,
     AgentMiddleware,
-    AgentResponse,
-    Message,
-    MiddlewareTermination,
+    AgentRunContext,
+    AgentRunResponse,
+    ChatMessage,
 )
 from agent_framework.azure import AzureOpenAIResponsesClient
 from azure.identity import AzureCliCredential
@@ -40,7 +39,7 @@ load_dotenv()
 class TopicGuardMiddleware(AgentMiddleware):
     """Blocks requests that are off-topic for the assurance practice.
 
-    Uses MiddlewareTermination to short-circuit the pipeline before
+    Sets context.terminate to short-circuit the pipeline before
     the request ever reaches the model.
     """
 
@@ -48,8 +47,8 @@ class TopicGuardMiddleware(AgentMiddleware):
 
     async def process(
         self,
-        context: AgentContext,
-        call_next: Callable[[], Awaitable[None]],
+        context: AgentRunContext,
+        next: Callable[[AgentRunContext], Awaitable[None]],
     ) -> None:
         # Check the last user message for blocked topics
         last_message = context.messages[-1] if context.messages else None
@@ -59,22 +58,23 @@ class TopicGuardMiddleware(AgentMiddleware):
                 if topic in input_lower:
                     print(f"  [TopicGuard] ⛔ Blocked topic detected: '{topic}'")
                     # Set a canned response and terminate — model never runs
-                    context.result = AgentResponse(
+                    context.result = AgentRunResponse(
                         messages=[
-                            Message(
+                            ChatMessage(
                                 role="assistant",
-                                contents=[
+                                text=(
                                     f"I'm unable to help with {topic}. I'm designed to assist "
                                     f"with audit and assurance topics only. Please consult the "
                                     f"appropriate team for this request."
-                                ],
+                                ),
                             )
                         ]
                     )
-                    raise MiddlewareTermination(result=context.result)
+                    context.terminate = True
+                    return
 
         # Input is acceptable — pass to the next middleware / agent
-        await call_next()
+        await next(context)
 
 
 # --- Guardrail 2: PII Redaction Middleware ---
@@ -92,16 +92,16 @@ class PIIRedactionMiddleware(AgentMiddleware):
 
     async def process(
         self,
-        context: AgentContext,
-        call_next: Callable[[], Awaitable[None]],
+        context: AgentRunContext,
+        next: Callable[[AgentRunContext], Awaitable[None]],
     ) -> None:
         # Let the agent run first
-        await call_next()
+        await next(context)
 
         # Redact PII from the response messages
-        if context.result and isinstance(context.result, AgentResponse):
+        if context.result and isinstance(context.result, AgentRunResponse):
             redacted = False
-            new_messages: list[Message] = []
+            new_messages: list[ChatMessage] = []
             for msg in context.result.messages:
                 if msg.text:
                     cleaned = msg.text
@@ -110,13 +110,13 @@ class PIIRedactionMiddleware(AgentMiddleware):
                     if cleaned != msg.text:
                         redacted = True
                     new_messages.append(
-                        Message(role=msg.role, contents=[cleaned])
+                        ChatMessage(role=msg.role, text=cleaned)
                     )
                 else:
                     new_messages.append(msg)
             if redacted:
                 print("  [PIIRedaction] 🔒 PII detected and redacted from response")
-                context.result = AgentResponse(messages=new_messages)
+                context.result = AgentRunResponse(messages=new_messages)
 
 
 # --- Guardrail 3: Audit Logging Middleware ---
@@ -132,8 +132,8 @@ class AuditLogMiddleware(AgentMiddleware):
 
     async def process(
         self,
-        context: AgentContext,
-        call_next: Callable[[], Awaitable[None]],
+        context: AgentRunContext,
+        next: Callable[[AgentRunContext], Awaitable[None]],
     ) -> None:
         start_time = datetime.now(timezone.utc)
 
@@ -147,13 +147,13 @@ class AuditLogMiddleware(AgentMiddleware):
             "input": user_input,
         }
 
-        try:
-            await call_next()
-        except MiddlewareTermination:
+        await next(context)
+
+        if context.terminate:
             entry["blocked"] = True
 
         # Log the response
-        if context.result and isinstance(context.result, AgentResponse):
+        if context.result and isinstance(context.result, AgentRunResponse):
             first_msg = context.result.messages[0] if context.result.messages else None
             entry["output"] = (first_msg.text[:200] if first_msg and first_msg.text else "(empty)")
         else:
@@ -169,14 +169,14 @@ class AuditLogMiddleware(AgentMiddleware):
 
 async def main():
     client = AzureOpenAIResponsesClient(
-        project_endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-        deployment_name=os.environ["AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME"],
+        endpoint=os.environ.get("AZURE_AI_PROJECT_ENDPOINT") or os.environ["PROJECT_ENDPOINT"],
+        deployment_name=os.environ.get("AZURE_OPENAI_RESPONSES_DEPLOYMENT_NAME") or os.environ.get("MODEL_DEPLOYMENT_NAME", "gpt-5-mini"),
         credential=AzureCliCredential(),
     )
 
     audit_log = AuditLogMiddleware()
 
-    agent = client.as_agent(
+    agent = client.create_agent(
         name="GuardedAgent",
         instructions=(
             "You are an audit assistant. Only discuss audit and assurance topics. "
