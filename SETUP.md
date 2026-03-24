@@ -172,13 +172,9 @@ az cognitiveservices account show --name <foundry-resource> --resource-group <rg
 
 If this returns `true` and cannot be changed, participants should use **Exercise 06b** (MAF file-based memory) instead of Exercise 06.
 
-## 1.5 FRED API Connection (Exercise 04 — Portal OpenAPI Tools)
+## 1.5 FRED API Key (Exercise 04)
 
-For participants adding OpenAPI tools in the Foundry portal, create a shared FRED API connection:
-
-1. Foundry portal → project → **Connected resources** → **New connection** → **Custom keys**
-2. Name: `fred_economic_data`, Key name: `api_key`, Key value: a shared FRED API key
-3. Participants using the SDK directly can set `FRED_API_KEY` in their own `.env` instead
+No admin setup required — each participant registers for their own free FRED API key and adds it to their `.env` as `FRED_API_KEY`. Participants who use the portal OpenAPI tool flow will create their own connection as part of the exercise.
 
 > FRED API keys are free: [fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html)
 
