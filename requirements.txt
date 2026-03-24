@@ -4,11 +4,13 @@ azure-ai-projects>=2.0.0b3
 azure-identity>=1.19.0
 
 # Evaluation (Exercise 07)
-azure-ai-evaluation
+azure-ai-evaluation>=1.16.0
 promptflow>=1.18.0
+promptflow-core>=1.18.0
+promptflow-devkit>=1.18.0
 
 # Microsoft Agent Framework (Session 2: MAF Agents & Capstone)
-agent-framework[azure]
+agent-framework
 
 # Utilities
 python-dotenv>=1.0.0

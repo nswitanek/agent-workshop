@@ -19,6 +19,7 @@ Reference: https://learn.microsoft.com/en-us/azure/ai-foundry/evaluation/
 """
 
 import json
+import multiprocessing
 import os
 import sys
 import time
@@ -541,4 +542,5 @@ def compare_results():
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()

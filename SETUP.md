@@ -283,12 +283,17 @@ cd agent-workshop
 
 ### With uv (recommended)
 
+macOS / Linux:
 ```bash
-# Create virtual environment and install all dependencies in one step
 uv venv
-source .venv/bin/activate        # macOS / Linux
-# .venv\Scripts\activate         # Windows PowerShell
+source .venv/bin/activate
+uv pip install --pre -r requirements.txt
+```
 
+Windows PowerShell:
+```powershell
+uv venv
+.venv\Scripts\Activate.ps1
 uv pip install --pre -r requirements.txt
 ```
 
@@ -309,6 +314,28 @@ pip install -r requirements.txt
 ```
 
 > **Note:** The `--pre` flag (used with uv) allows installing pre-release packages, which some workshop dependencies require.
+
+### Switching Python versions (uv)
+
+If you need a specific Python version (e.g., 3.12), you can recreate the virtual environment:
+
+macOS / Linux:
+```bash
+uv python install 3.12
+rm -rf .venv
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install --pre -r requirements.txt
+```
+
+Windows PowerShell:
+```powershell
+uv python install 3.12
+Remove-Item -Recurse -Force .venv
+uv venv --python 3.12
+.venv\Scripts\Activate.ps1
+uv pip install --pre -r requirements.txt
+```
 
 ## 2.6 Environment Variables
 
