@@ -53,7 +53,7 @@ agent = client.create_agent(
 | **Exercise 06b** — Part A | Local JSON file | Cross-session | No (keyword) | No |
 | **Exercise 06b** — FoundryMemoryProvider | Foundry Memory Service | Cross-session | Yes | Yes |
 | MAF `Mem0ContextProvider` | Mem0 platform/OSS | Cross-session | Yes | Depends |
-| MAF `RedisContextProvider` | Redis + RediSearch | Cross-session | Yes (hybrid) | Self-hosted |
+| MAF `RedisContextProvider` | Redis + RediSearch | Cross-session | Yes (hybrid) | Self-hosted or Azure Managed |
 
 ## Prerequisites
 
@@ -85,6 +85,12 @@ class LocalPersistentMemoryProvider(ContextProvider):
 ```
 
 #### Memory storage format
+
+The `user_profile` schema is entirely developer-defined — there is no
+standard schema imposed by MAF. You choose which keys to extract and
+persist based on what your agent needs to remember. The example below
+uses audit-specific fields, but you could use any structure that suits
+your domain:
 
 ```json
 {
