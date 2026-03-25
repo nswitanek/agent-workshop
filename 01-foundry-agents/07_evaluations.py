@@ -70,7 +70,8 @@ Help auditors with:
 - Accounting standards guidance (ASC 606, ASC 326, ASC 820, ASC 450, etc.)
 
 Be professional, precise, and reference applicable standards when relevant.
-Provide structured, actionable responses.
+Provide structured, actionable responses. Keep responses concise — aim for
+200-400 words maximum.
 """
 
 ENHANCED_INSTRUCTIONS = """\
@@ -95,7 +96,7 @@ When answering:
 5. Consider materiality thresholds in your analysis
 6. Flag areas requiring specialist involvement (IT, valuation, tax, legal)
 
-Be concise but thorough. Prioritize actionable audit procedures.
+Be concise but thorough — aim for 200-400 words. Prioritize actionable audit procedures.
 """
 
 
@@ -210,17 +211,18 @@ def run_agent_on_dataset(
     output_path: Path,
 ) -> Path:
     """Run the agent on each query in the dataset, producing a results JSONL
-    file with columns: query, response, context, ground_truth."""
+    file with columns: query, response, context, ground_truth.
+
+    Queries run in parallel (up to 5 at a time) to reduce total wall-clock time.
+    """
     with open(dataset_path, encoding="utf-8") as f:
         rows = [json.loads(line) for line in f if line.strip()]
 
-    results = []
-    for i, row in enumerate(rows):
+    def process_query(idx_row):
+        """Process a single query — designed for use with ThreadPoolExecutor."""
+        i, row = idx_row
         query = row["query"]
-        print(f"  [{i + 1}/{len(rows)}] {query[:80]}...")
-        t0 = time.time()
 
-        # Retry with exponential backoff for rate-limit errors
         response_text = ""
         context_parts = []
         thread = None
@@ -233,7 +235,6 @@ def run_agent_on_dataset(
                     agent_id=agent_id,
                 )
 
-                # Collect response
                 messages = client.messages.list(thread_id=thread.id)
                 for msg in messages:
                     if msg.role == "assistant":
@@ -242,7 +243,6 @@ def run_agent_on_dataset(
                                 response_text = block.text.value
                                 break
 
-                # Collect tool call info as context
                 run_steps = client.run_steps.list(thread_id=thread.id, run_id=run.id)
                 for step in run_steps:
                     if step.type == "tool_calls":
@@ -257,17 +257,13 @@ def run_agent_on_dataset(
 
                 client.threads.delete(thread.id)
                 thread = None
-                elapsed = time.time() - t0
-                print(f"    ✓ {elapsed:.1f}s")
-                break  # Success
+                break
 
             except Exception as e:
                 if "429" in str(e) or "Too Many Requests" in str(e) or "rate" in str(e).lower():
                     wait = 2 ** attempt * 5
-                    print(f"    Rate limited, retrying in {wait}s (attempt {attempt + 1}/5)...")
                     time.sleep(wait)
                 else:
-                    print(f"    Error: {e}")
                     break
             finally:
                 if thread:
@@ -277,12 +273,30 @@ def run_agent_on_dataset(
                         pass
                     thread = None
 
-        results.append({
+        return {
+            "index": i,
             "query": query,
             "response": response_text,
             "context": "\n---\n".join(context_parts) if context_parts else "",
             "ground_truth": row.get("ground_truth", ""),
-        })
+        }
+
+    # Run queries in parallel (5 concurrent threads)
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    t0 = time.time()
+    results = [None] * len(rows)
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(process_query, (i, row)): i for i, row in enumerate(rows)}
+        for future in as_completed(futures):
+            result = future.result()
+            idx = result.pop("index")
+            results[idx] = result
+            elapsed = time.time() - t0
+            print(f"  [{idx + 1}/{len(rows)}] ✓ {elapsed:.0f}s — {result['query'][:60]}...")
+
+    total = time.time() - t0
+    print(f"  All {len(rows)} queries completed in {total:.0f}s (parallel)")
 
     # Write results JSONL
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -370,7 +384,8 @@ def run_evaluation(
             output_path=str(output_path),
         )
     except Exception as e:
-        if "AuthorizationFailure" in str(e) or "not authorized" in str(e):
+        err_str = str(e)
+        if any(k in err_str for k in ["AuthorizationFailure", "not authorized", "uploading file", "HttpResponseError"]):
             print(
                 "\n  ⚠️  Portal upload failed (storage network access restricted)."
                 "\n  Running evaluation locally without portal upload..."

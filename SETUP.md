@@ -163,6 +163,26 @@ az role assignment create --assignee "$MI_ID" \
   --scope "/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<foundry-resource>"
 ```
 
+### Required for Server-Side Evaluations (Exercise 07b)
+
+Exercise 07b uses the `azure-ai-projects` SDK's OpenAI-compatible evals API (`openai.evals.*`), which runs evaluations **server-side** on the Foundry backend — unlike Exercise 07's `azure-ai-evaluation` SDK, which runs evaluators locally on the participant's machine.
+
+Because the Foundry backend executes the eval runs and writes results to blob storage, the **project's managed identity** needs `Storage Blob Data Contributor` on the linked storage account. Without this, participants will see a `ProjectMIUnauthorized` / `AuthorizationFailure` error when creating eval runs.
+
+- [ ] Assign `Storage Blob Data Contributor` to the project's managed identity:
+
+```bash
+MI_ID=$(az cognitiveservices account show \
+  --name <foundry-resource> --resource-group <rg> \
+  --query "identity.principalId" -o tsv)
+
+az role assignment create --assignee "$MI_ID" \
+  --role "Storage Blob Data Contributor" \
+  --scope "/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<storage-account>"
+```
+
+> **Note:** This is separate from the participant-level `Storage Blob Data Contributor` assignment in section 1.2, which is needed for Exercise 07's client-side portal uploads. The managed identity assignment here is for the Foundry backend itself. Role assignment propagation typically takes 1–2 minutes.
+
 ### Check: `disableLocalAuth` Policy
 
 ```bash
@@ -219,7 +239,7 @@ az rest --method GET \
 Expected results:
 - 4 model deployments with capacity ≥ listed minimums
 - Storage: public access enabled or venue IP whitelisted
-- Managed identity: Azure AI User + Cognitive Services OpenAI User
+- Managed identity: Azure AI User + Cognitive Services OpenAI User + Storage Blob Data Contributor (for 07b server-side evals)
 - disableLocalAuth: `false` (preferred) or `true` (exercise 06 will use file-based alternative)
 - At least one AzureOpenAI connection with `isDefault=true`
 
