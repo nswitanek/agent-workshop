@@ -10,7 +10,11 @@ The agent is intentionally NOT deleted so participants can iteratively:
   3. Add memory          → re-eval → observe improvement on context-dependent queries
   4. Optimize the prompt → re-eval → observe improvement across the board
 
-Each run is logged to the Foundry portal for side-by-side comparison.
+Comparison: Use `python 07_evaluations.py compare` to view a side-by-side
+metrics table across all runs. The azure-ai-evaluation SDK creates each
+evaluate() call as a separate evaluation in the Foundry portal; to compare
+runs within a single evaluation in the portal, use 07b instead (which uses
+the OpenAI Evals API with its eval → runs hierarchy).
 
 Concepts: evaluate(), quality evaluators, safety evaluators, agentic evaluators,
           AIAgentConverter, Foundry eval dashboard, iterative agent improvement
@@ -19,6 +23,7 @@ Reference: https://learn.microsoft.com/en-us/azure/ai-foundry/evaluation/
 """
 
 import json
+import logging
 import multiprocessing
 import os
 import sys
@@ -49,6 +54,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Suppress noisy SDK warnings that don't affect results
+logging.getLogger("azure.ai.evaluation._evaluate._batch_run").setLevel(logging.ERROR)
+logging.getLogger("run").setLevel(logging.ERROR)
+
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR / "data"
 OPENAPI_DIR = SCRIPT_DIR / "openapi"
@@ -57,6 +66,10 @@ OUTPUTS_DIR = SCRIPT_DIR / "outputs"
 PARTICIPANT_INITIALS = os.environ.get("PARTICIPANT_INITIALS", "")
 SUFFIX = f"-{PARTICIPANT_INITIALS}" if PARTICIPANT_INITIALS else ""
 AGENT_NAME = f"AuditResearchAgent-Eval{SUFFIX}"
+
+# Use gpt-4.1 (EVAL_MODEL_DEPLOYMENT_NAME) for the eval agent — gpt-5-mini
+# does not support OpenAPI tools through the Agents API.
+AGENT_MODEL = os.environ.get("EVAL_MODEL_DEPLOYMENT_NAME", "gpt-4.1")
 
 BASELINE_INSTRUCTIONS = """\
 You are an Audit Research Assistant at a professional services firm.
@@ -172,7 +185,7 @@ def create_or_get_agent(
     tools = get_openapi_tools() if with_tools else []
 
     agent = client.create_agent(
-        model=os.environ["MODEL_DEPLOYMENT_NAME"],
+        model=AGENT_MODEL,
         name=AGENT_NAME,
         description="Persistent audit research agent for evaluation experiments",
         instructions=instructions,
@@ -190,19 +203,61 @@ def update_agent(
     with_tools: bool | None = None,
 ) -> None:
     """Update the existing agent's instructions and/or tools."""
-    kwargs: dict = {}
+    kwargs: dict = {"model": AGENT_MODEL}
     if instructions is not None:
         kwargs["instructions"] = instructions
     if with_tools is not None:
         kwargs["tools"] = get_openapi_tools() if with_tools else []
-    if kwargs:
-        client.update_agent(agent_id=agent_id, **kwargs)
-        print(f"Updated agent {agent_id}")
+    client.update_agent(agent_id=agent_id, **kwargs)
+    print(f"Updated agent {agent_id}")
 
 
 # ---------------------------------------------------------------------------
 # Run agent against dataset
 # ---------------------------------------------------------------------------
+
+def _build_conversation(query_text: str, response_msgs: list, context_parts: list) -> dict:
+    """Build a conversation object from agent thread messages.
+
+    IntentResolutionEvaluator and TaskAdherenceEvaluator expect `query`
+    and `response` as lists of message dicts (conversation history format)
+    rather than plain strings.  When given plain strings they emit:
+        "Conversation history could not be parsed, falling back to original query"
+    and produce less accurate scores.
+
+    The `query` list should contain only user messages (ending with the
+    current query).  The `response` list contains the assistant's reply.
+    """
+    query_msgs = [
+        {"role": "user", "content": [{"type": "text", "text": query_text}]},
+    ]
+    formatted_response = []
+    for msg in response_msgs:
+        role = msg.get("role", "assistant")
+        content = msg.get("content", "")
+        if role == "tool":
+            formatted_response.append({
+                "role": "tool",
+                "tool_call_id": msg.get("tool_call_id", ""),
+                "content": [{"type": "tool_result", "tool_result": content}],
+            })
+        elif role == "assistant":
+            tool_calls = msg.get("tool_calls")
+            if tool_calls:
+                formatted_response.append({
+                    "role": "assistant",
+                    "content": [{"type": "tool_call", "tool_call": tc} for tc in tool_calls],
+                })
+            else:
+                formatted_response.append({
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": content}],
+                })
+    return {
+        "query": query_msgs,
+        "response": formatted_response,
+    }
+
 
 def run_agent_on_dataset(
     client: AgentsClient,
@@ -225,6 +280,7 @@ def run_agent_on_dataset(
 
         response_text = ""
         context_parts = []
+        raw_msgs = []
         thread = None
         for attempt in range(5):
             try:
@@ -241,6 +297,7 @@ def run_agent_on_dataset(
                         for block in msg.content:
                             if hasattr(block, "text"):
                                 response_text = block.text.value
+                                raw_msgs.append({"role": "assistant", "content": block.text.value})
                                 break
 
                 run_steps = client.run_steps.list(thread_id=thread.id, run_id=run.id)
@@ -264,6 +321,7 @@ def run_agent_on_dataset(
                     wait = 2 ** attempt * 5
                     time.sleep(wait)
                 else:
+                    print(f"  [{i + 1}] ✗ Error: {e}")
                     break
             finally:
                 if thread:
@@ -273,10 +331,11 @@ def run_agent_on_dataset(
                         pass
                     thread = None
 
+        conv = _build_conversation(query, raw_msgs, context_parts)
         return {
             "index": i,
-            "query": query,
-            "response": response_text,
+            "query": conv["query"],
+            "response": conv["response"],
             "context": "\n---\n".join(context_parts) if context_parts else "",
             "ground_truth": row.get("ground_truth", ""),
         }
@@ -335,6 +394,8 @@ def run_evaluation(
     results_path: Path,
     evaluation_name: str,
     include_safety: bool = False,
+    agent_name: str = "",
+    agent_id: str = "",
 ) -> dict:
     """Run quality (and optionally safety) evaluators on agent results."""
     project_endpoint = os.environ["PROJECT_ENDPOINT"]
@@ -368,6 +429,14 @@ def run_evaluation(
             credential=credential,
         )
 
+    # Tags associate the eval run with the agent in the Foundry portal.
+    # The portal's agent Evaluations tab filters by these tags.
+    tags = {}
+    if agent_name:
+        tags["agent_name"] = agent_name
+    if agent_id:
+        tags["agent_id"] = agent_id
+
     output_path = OUTPUTS_DIR / f"{evaluation_name}_results.json"
 
     print(f"\nRunning evaluation: {evaluation_name}")
@@ -382,13 +451,14 @@ def run_evaluation(
             azure_ai_project=project_endpoint,
             evaluation_name=evaluation_name,
             output_path=str(output_path),
+            tags=tags,
         )
     except Exception as e:
         err_str = str(e)
         if any(k in err_str for k in ["AuthorizationFailure", "not authorized", "uploading file", "HttpResponseError"]):
             print(
-                "\n  ⚠️  Portal upload failed (storage network access restricted)."
-                "\n  Running evaluation locally without portal upload..."
+                "\n  ⚠️  Portal upload failed (storage requires allowSharedKeyAccess=true for SAS uploads)."
+                "\n  Running evaluation locally — results saved to outputs/ but won't appear in the Foundry portal."
             )
             result = evaluate(
                 data=str(results_path),
@@ -447,7 +517,7 @@ def main():
         print("\nGenerating agent responses...")
         run_agent_on_dataset(client, agent_id, dataset_path, results_path)
 
-        run_evaluation(results_path, f"audit-agent-baseline{SUFFIX}")
+        run_evaluation(results_path, f"audit-agent-baseline{SUFFIX}", agent_name=AGENT_NAME, agent_id=agent_id)
 
     elif mode == "tools":
         # --- Run 2: Agent with OpenAPI tools ---
@@ -462,7 +532,7 @@ def main():
         print("\nGenerating agent responses...")
         run_agent_on_dataset(client, agent_id, dataset_path, results_path)
 
-        run_evaluation(results_path, f"audit-agent-with-tools{SUFFIX}")
+        run_evaluation(results_path, f"audit-agent-with-tools{SUFFIX}", agent_name=AGENT_NAME, agent_id=agent_id)
 
     elif mode == "enhanced":
         # --- Run 3: Enhanced prompt + tools ---
@@ -477,7 +547,7 @@ def main():
         print("\nGenerating agent responses...")
         run_agent_on_dataset(client, agent_id, dataset_path, results_path)
 
-        run_evaluation(results_path, f"audit-agent-enhanced{SUFFIX}")
+        run_evaluation(results_path, f"audit-agent-enhanced{SUFFIX}", agent_name=AGENT_NAME, agent_id=agent_id)
 
     elif mode == "compare":
         # --- Compare all available runs ---
@@ -492,6 +562,10 @@ def main():
         print("SAFETY EVALUATION")
         print("=" * 60)
 
+        agent_id = create_or_get_agent(
+            client, instructions=BASELINE_INSTRUCTIONS, with_tools=False
+        )
+
         # Find the most recent responses file
         response_files = sorted(OUTPUTS_DIR.glob(f"eval_*_responses{SUFFIX}.jsonl"))
         if not response_files:
@@ -499,7 +573,7 @@ def main():
             return
         latest = response_files[-1]
         print(f"Running safety eval on: {latest.name}")
-        run_evaluation(latest, f"audit-agent-safety-{latest.stem}{SUFFIX}", include_safety=True)
+        run_evaluation(latest, f"audit-agent-safety-{latest.stem}{SUFFIX}", include_safety=True, agent_name=AGENT_NAME, agent_id=agent_id)
 
     else:
         print(f"Usage: python {sys.argv[0]} [baseline|tools|enhanced|compare|safety]")
@@ -512,10 +586,14 @@ def main():
         return
 
     print(f"\nAgent '{AGENT_NAME}' is persisted in Foundry — experiment in the portal!")
+    print(f"Run 'python {sys.argv[0]} compare' to compare metrics across all runs.")
 
 
 def compare_results():
-    """Load all evaluation result files and print a side-by-side comparison."""
+    """Load all evaluation result files and print a side-by-side comparison.
+
+    Outputs to both console and a markdown file in outputs/.
+    """
     result_files = sorted(OUTPUTS_DIR.glob(f"*{SUFFIX}_results.json"))
     if not result_files:
         print("No evaluation results found. Run baseline, tools, or enhanced first.")
@@ -531,11 +609,15 @@ def compare_results():
             k: v for k, v in metrics.items() if isinstance(v, (int, float))
         }
 
-    # Collect all metric names
+    # Filter to the core quality metrics (skip token counts, binary aggregates)
+    core_metrics = [
+        k for k in sorted(set(k for m in all_metrics.values() for k in m))
+        if not any(skip in k for skip in ["_tokens", "binary_aggregate", "gpt_"])
+    ]
     all_keys = sorted(set(k for m in all_metrics.values() for k in m))
-
-    # Print comparison table
     headers = list(all_metrics.keys())
+
+    # --- Console output ---
     col_width = max(len(h) for h in headers + ["Metric"]) + 2
     col_width = max(col_width, 16)
 
@@ -554,6 +636,74 @@ def compare_results():
             else:
                 print(f"{'—':>{col_width}}", end="")
         print()
+
+    # --- Markdown output ---
+    md_path = OUTPUTS_DIR / f"eval_comparison{SUFFIX}.md"
+    with open(md_path, "w", encoding="utf-8") as f:
+        f.write(f"# Evaluation Comparison — {AGENT_NAME}\n\n")
+
+        # Summary table with core metrics only
+        f.write("## Summary\n\n")
+        f.write("| Metric |")
+        for h in headers:
+            f.write(f" {h} |")
+        f.write("\n|--------|")
+        for _ in headers:
+            f.write("-------:|")
+        f.write("\n")
+
+        for key in core_metrics:
+            f.write(f"| {key} |")
+            for h in headers:
+                val = all_metrics[h].get(key)
+                f.write(f" {val:.3f} |" if val is not None else " — |")
+            f.write("\n")
+
+        # Full metrics table
+        f.write("\n## All Metrics\n\n")
+        f.write("| Metric |")
+        for h in headers:
+            f.write(f" {h} |")
+        f.write("\n|--------|")
+        for _ in headers:
+            f.write("-------:|")
+        f.write("\n")
+
+        for key in all_keys:
+            f.write(f"| {key} |")
+            for h in headers:
+                val = all_metrics[h].get(key)
+                f.write(f" {val:.3f} |" if val is not None else " — |")
+            f.write("\n")
+
+        f.write(f"\n*Generated from {len(result_files)} evaluation runs.*\n")
+
+        # Glossary
+        f.write("""
+## Metric Glossary
+
+| Metric | Scale | Description |
+|--------|:-----:|-------------|
+| **coherence** | 1–5 | Is the response logically structured and easy to follow? Measures organization, flow, and internal consistency. |
+| **fluency** | 1–5 | Is the response grammatically correct and naturally written? Evaluates language quality independent of content accuracy. |
+| **groundedness** | 1–5 | Is the response supported by the provided context? Penalizes hallucinated or unsupported claims. Only meaningful when context (tool output) is available. |
+| **relevance** | 1–5 | Does the response address the user's query? Measures topical alignment between the question asked and the answer given. |
+| **intent_resolution** | 1–5 | Did the agent correctly understand and fulfill the user's intent? Considers whether the agent identified what the user was really asking for and delivered on it. |
+| **task_adherence** | 0–1 | Did the agent follow its instructions? Binary metric — 1.0 means the response adheres to the system prompt's guidelines (structure, tone, scope). |
+
+**Interpreting the scores:**
+- **4.5+** — Excellent. The agent consistently performs well on this dimension.
+- **3.5–4.5** — Good. Occasional gaps but generally strong.
+- **< 3.5** — Needs improvement. Look at per-query results in the `_results.json` file to identify weak spots.
+- **binary_aggregate** — Fraction of queries that scored above the passing threshold (typically 3 on a 1–5 scale).
+
+**Documentation:**
+- [Azure AI Evaluation — Quality Evaluators](https://learn.microsoft.com/en-us/azure/ai-foundry/evaluation/concepts/evaluation-evaluators/quality-evaluators)
+- [Azure AI Evaluation — Agent Evaluators](https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/evaluation-evaluators/agent-evaluators)
+- [Evaluation Overview](https://learn.microsoft.com/en-us/azure/ai-foundry/evaluation/)
+""")
+
+    print(f"\n  Comparison saved to: {md_path}")
 
 
 if __name__ == "__main__":

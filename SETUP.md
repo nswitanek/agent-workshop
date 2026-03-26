@@ -61,27 +61,28 @@ az cognitiveservices account deployment list \
 
 ### Storage Account
 
-The Foundry project uses a linked storage account for evaluation result uploads.
+The Foundry project uses a linked storage account for evaluation result uploads (Exercises 07 and 07b). Both the client-side SDK (`azure-ai-evaluation`) and the server-side API (`openai.evals`) upload results via **SAS tokens** derived from storage account keys.
 
-- [ ] Identify the storage account linked to the Foundry project
-- [ ] **Network access**: The evaluation SDK uploads results from participant machines directly to blob storage. If the storage account has **public network access disabled**, uploads will fail. Options:
-  - **(Recommended)** Add a network rule for the workshop venue's public IP range
-  - Or enable public network access during the workshop
-  - Or accept that participants won't see eval results in the Foundry portal (the script falls back to local results automatically)
+- [ ] **`allowSharedKeyAccess`** — Must be `true`. If enforced to `false` by Azure Policy or Defender, **portal uploads will fail** for both exercises. The scripts fall back to local-only results automatically.
+
+```bash
+az storage account show --name <storage-account> --resource-group <resource-group> \
+  --query "allowSharedKeyAccess" -o tsv
+```
+
+- [ ] **Network access** — The client-side SDK uploads from participant machines. If `publicNetworkAccess=Disabled` or `defaultAction=Deny`, add the workshop venue's public IP range:
 
 ```bash
 # Check current network access
 az storage account show --name <storage-account> --resource-group <resource-group> \
-  --query "{publicAccess:publicNetworkAccess, bypass:networkRuleSet.bypass}" -o json
+  --query "{publicAccess:publicNetworkAccess, defaultAction:networkRuleSet.defaultAction, allowSharedKeyAccess:allowSharedKeyAccess}" -o json
 
-# Option A: Add venue IP range (recommended)
+# Add venue IP range (required if defaultAction=Deny)
 az storage account network-rule add --account-name <storage-account> \
   --resource-group <resource-group> --ip-address <venue-public-ip-or-cidr>
-
-# Option B: Enable public access
-az storage account update --name <storage-account> --resource-group <resource-group> \
-  --public-network-access Enabled
 ```
+
+> **If `allowSharedKeyAccess` cannot be enabled:** Participants can still run evaluations — results are saved locally to `outputs/` and printed to console. They just won't appear in the Foundry portal. The `compare` command (`python 07_evaluations.py compare`) works entirely from local files.
 
 ## 1.2 RBAC — Participant Permissions
 
@@ -138,16 +139,16 @@ az rest --method PUT \
   }'
 ```
 
-## 1.4 Managed Identity (for Memory Service — Exercise 06)
+## 1.4 Managed Identity
 
-The Foundry Memory Service is a **preview feature** that runs server-side. It needs the Foundry resource's managed identity to access model deployments.
-
-> **Known limitation:** If `disableLocalAuth=true` is enforced by policy on the Cognitive Services resource, the memory service may fail with "Authentication failed" even with correct RBAC. Exercise 06b (MAF, file-based memory) is provided as a working alternative.
+The Foundry resource's **system-assigned managed identity** is used by the Foundry backend for server-side operations — memory service, agent execution, and evaluations. Several exercises depend on it.
 
 - [ ] Enable **system-assigned managed identity** on the Foundry resource:
   - Portal → Foundry resource → **Resource Management** → **Identity** → **System assigned** → **On**
 
-- [ ] Assign roles to the managed identity:
+### MI Roles for Agent & Memory Service (Exercises 05, 06)
+
+The managed identity needs access to model deployments so the Foundry backend can run agents and the memory service.
 
 ```bash
 MI_ID=$(az cognitiveservices account show \
@@ -163,13 +164,29 @@ az role assignment create --assignee "$MI_ID" \
   --scope "/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<foundry-resource>"
 ```
 
-### Required for Server-Side Evaluations (Exercise 07b)
+> **Known limitation (Exercise 06):** The Foundry Memory Service is a preview feature. If `disableLocalAuth=true` is enforced by policy on the Cognitive Services resource, the memory service may fail with "Authentication failed" even with correct RBAC. Exercise 06b (MAF, file-based memory) is provided as a working alternative.
+
+### MI Roles for Server-Side Evaluations (Exercise 07b)
 
 Exercise 07b uses the `azure-ai-projects` SDK's OpenAI-compatible evals API (`openai.evals.*`), which runs evaluations **server-side** on the Foundry backend — unlike Exercise 07's `azure-ai-evaluation` SDK, which runs evaluators locally on the participant's machine.
 
-Because the Foundry backend executes the eval runs and writes results to blob storage, the **project's managed identity** needs `Storage Blob Data Contributor` on the linked storage account. Without this, participants will see a `ProjectMIUnauthorized` / `AuthorizationFailure` error when creating eval runs.
+The Foundry eval backend (`raisvc`) writes results to blob storage. This requires **two things**:
 
-- [ ] Assign `Storage Blob Data Contributor` to the project's managed identity:
+1. The project's managed identity needs `Storage Blob Data Contributor` on the project's storage account.
+2. The storage account must have **`allowSharedKeyAccess=true`** — the `raisvc` generates SAS tokens from account keys.
+
+> **⚠️ Known limitation:** If `allowSharedKeyAccess` is enforced to `false` by Azure Policy, Defender, or the ML workspace, Exercise 07b's server-side evals **will not work**. Use Exercise 07 (client-side evals) instead — it authenticates via Entra ID and works regardless of shared key settings. See `07b_TROUBLESHOOTING.md` for details.
+
+- [ ] Check `allowSharedKeyAccess` on the project storage:
+
+```bash
+az storage account show --name <storage-account> --resource-group <rg> \
+  --query "allowSharedKeyAccess" -o tsv
+```
+
+If this returns `false` and cannot be changed, **skip Exercise 07b** — participants should use Exercise 07 instead. Both produce portal-visible evaluation results.
+
+- [ ] If `allowSharedKeyAccess=true`, assign `Storage Blob Data Contributor` to the MI:
 
 ```bash
 MI_ID=$(az cognitiveservices account show \
@@ -181,7 +198,26 @@ az role assignment create --assignee "$MI_ID" \
   --scope "/subscriptions/<sub-id>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<storage-account>"
 ```
 
-> **Note:** This is separate from the participant-level `Storage Blob Data Contributor` assignment in section 1.2, which is needed for Exercise 07's client-side portal uploads. The managed identity assignment here is for the Foundry backend itself. Role assignment propagation typically takes 1–2 minutes.
+> **Note:** This is separate from the participant-level `Storage Blob Data Contributor` in section 1.2 (needed for Exercise 07's client-side portal uploads). The MI assignment here is for the Foundry backend itself. Role propagation typically takes 1–5 minutes.
+
+### MI Role Summary
+
+| Resource | Role | Purpose |
+|----------|------|---------|
+| Foundry resource | Azure AI User | Agent/memory backend access |
+| Foundry resource | Cognitive Services OpenAI User | Model deployment access |
+| Storage account(s) | Storage Blob Data Contributor | Server-side eval result storage |
+
+### Verify MI Roles
+
+```bash
+MI_ID=$(az cognitiveservices account show \
+  --name <foundry-resource> --resource-group <rg> \
+  --query "identity.principalId" -o tsv)
+
+az role assignment list --assignee "$MI_ID" --all \
+  --query "[].{role:roleDefinitionName, scope:scope}" -o table
+```
 
 ### Check: `disableLocalAuth` Policy
 
@@ -214,7 +250,7 @@ az cognitiveservices account deployment list --name $RESOURCE --resource-group $
 echo ""
 echo "=== 2. Storage Network Access ==="
 az storage account show --name $STORAGE --resource-group $RG \
-  --query "{publicAccess:publicNetworkAccess, bypass:networkRuleSet.bypass}" -o json
+  --query "{publicAccess:publicNetworkAccess, bypass:networkRuleSet.bypass, allowSharedKeyAccess:allowSharedKeyAccess}" -o json
 
 echo ""
 echo "=== 3. Managed Identity ==="
@@ -238,8 +274,8 @@ az rest --method GET \
 
 Expected results:
 - 4 model deployments with capacity ≥ listed minimums
-- Storage: public access enabled or venue IP whitelisted
-- Managed identity: Azure AI User + Cognitive Services OpenAI User + Storage Blob Data Contributor (for 07b server-side evals)
+- Storage: public access enabled or venue IP whitelisted; `allowSharedKeyAccess=true` if using Exercise 07b
+- Managed identity: Azure AI User + Cognitive Services OpenAI User (on Foundry resource) + Storage Blob Data Contributor (on storage, for 07b)
 - disableLocalAuth: `false` (preferred) or `true` (exercise 06 will use file-based alternative)
 - At least one AzureOpenAI connection with `isDefault=true`
 

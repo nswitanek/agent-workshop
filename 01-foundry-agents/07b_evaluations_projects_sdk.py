@@ -226,14 +226,19 @@ def run_agent_evaluation(
     openai_client,
     *,
     eval_name: str,
+    run_name: str,
     agent,
     dataset: list[dict],
     include_safety: bool = False,
 ) -> dict:
-    """Create an evaluation, run the agent against the dataset, and evaluate.
+    """Create an evaluation (or reuse existing), run the agent, and evaluate.
 
     Uses azure_ai_target_completions to send queries to the agent and
     evaluate responses in a single eval run.
+
+    The eval_name identifies a reusable evaluation container. Multiple runs
+    with different run_names can be created under the same evaluation for
+    side-by-side comparison in the Foundry portal.
     """
     eval_model = os.environ.get("EVAL_MODEL_DEPLOYMENT_NAME", "gpt-4.1")
 
@@ -255,17 +260,28 @@ def run_agent_evaluation(
         eval_model, for_agent=True, include_safety=include_safety
     )
 
-    print(f"\nCreating evaluation: {eval_name}")
+    print(f"\nEvaluation: {eval_name}")
     print(f"  Evaluators: {', '.join(c['name'] for c in testing_criteria)}")
     print(f"  Dataset: {len(dataset)} queries")
     print(f"  Agent: {agent.name} v{agent.version}")
 
-    eval_obj = openai_client.evals.create(
-        name=eval_name,
-        data_source_config=data_source_config,
-        testing_criteria=testing_criteria,  # type: ignore
-    )
-    print(f"  Evaluation created (id: {eval_obj.id})")
+    # Reuse an existing evaluation with the same name, or create a new one.
+    # This allows multiple runs (baseline, tools, enhanced) to be nested
+    # under one evaluation for side-by-side comparison in the portal.
+    eval_obj = None
+    for existing in openai_client.evals.list():
+        if existing.name == eval_name:
+            eval_obj = existing
+            print(f"  Reusing evaluation (id: {eval_obj.id})")
+            break
+
+    if eval_obj is None:
+        eval_obj = openai_client.evals.create(
+            name=eval_name,
+            data_source_config=data_source_config,
+            testing_criteria=testing_criteria,  # type: ignore
+        )
+        print(f"  Evaluation created (id: {eval_obj.id})")
 
     # --- Run eval with agent target completions ---
     data_source = {
@@ -301,11 +317,11 @@ def run_agent_evaluation(
 
     eval_run = openai_client.evals.runs.create(
         eval_id=eval_obj.id,
-        name=f"{eval_name}-run",
-        metadata={"participant": PARTICIPANT_INITIALS, "mode": eval_name},
+        name=run_name,
+        metadata={"participant": PARTICIPANT_INITIALS, "mode": run_name},
         data_source=data_source,  # type: ignore
     )
-    print(f"  Eval run created (id: {eval_run.id})")
+    print(f"  Run created: {run_name} (id: {eval_run.id})")
 
     # --- Poll for completion ---
     while eval_run.status not in ("completed", "failed"):
@@ -337,6 +353,7 @@ def run_response_evaluation(
     openai_client,
     *,
     eval_name: str,
+    run_name: str = "",
     results_path: Path,
     include_safety: bool = False,
 ) -> dict:
@@ -370,22 +387,34 @@ def run_response_evaluation(
         eval_model, for_agent=False, include_safety=include_safety
     )
 
-    print(f"\nCreating evaluation: {eval_name}")
+    if not run_name:
+        run_name = f"{eval_name}-run"
+
+    print(f"\nEvaluation: {eval_name}")
     print(f"  Evaluators: {', '.join(c['name'] for c in testing_criteria)}")
     print(f"  Data: {results_path} ({len(rows)} rows)")
 
-    eval_obj = openai_client.evals.create(
-        name=eval_name,
-        data_source_config=data_source_config,
-        testing_criteria=testing_criteria,  # type: ignore
-    )
-    print(f"  Evaluation created (id: {eval_obj.id})")
+    # Reuse existing evaluation or create a new one
+    eval_obj = None
+    for existing in openai_client.evals.list():
+        if existing.name == eval_name:
+            eval_obj = existing
+            print(f"  Reusing evaluation (id: {eval_obj.id})")
+            break
+
+    if eval_obj is None:
+        eval_obj = openai_client.evals.create(
+            name=eval_name,
+            data_source_config=data_source_config,
+            testing_criteria=testing_criteria,  # type: ignore
+        )
+        print(f"  Evaluation created (id: {eval_obj.id})")
 
     # --- Run eval with inline JSONL data ---
     eval_run = openai_client.evals.runs.create(
         eval_id=eval_obj.id,
-        name=f"{eval_name}-run",
-        metadata={"participant": PARTICIPANT_INITIALS, "mode": eval_name},
+        name=run_name,
+        metadata={"participant": PARTICIPANT_INITIALS, "mode": run_name},
         data_source=CreateEvalJSONLRunDataSourceParam(
             type="jsonl",
             source=SourceFileContent(
@@ -394,7 +423,7 @@ def run_response_evaluation(
             ),
         ),
     )
-    print(f"  Eval run created (id: {eval_run.id})")
+    print(f"  Run created: {run_name} (id: {eval_run.id})")
 
     # --- Poll for completion ---
     while eval_run.status not in ("completed", "failed"):
@@ -564,6 +593,9 @@ def main():
         AIProjectClient(endpoint=endpoint, credential=credential) as project_client,
         project_client.get_openai_client() as openai_client,
     ):
+        # All modes share one evaluation container for side-by-side comparison
+        eval_name = f"AuditResearchAgent-Eval{SUFFIX}"
+
         if mode == "baseline":
             # --- Run 1: Baseline agent (instructions only) ---
             print("=" * 60)
@@ -577,7 +609,8 @@ def main():
 
             run_agent_evaluation(
                 openai_client,
-                eval_name=f"audit-agent-baseline{SUFFIX}",
+                eval_name=eval_name,
+                run_name=f"baseline{SUFFIX}",
                 agent=agent,
                 dataset=dataset,
             )
@@ -600,7 +633,8 @@ def main():
 
             run_agent_evaluation(
                 openai_client,
-                eval_name=f"audit-agent-with-tools{SUFFIX}",
+                eval_name=eval_name,
+                run_name=f"with-tools{SUFFIX}",
                 agent=agent,
                 dataset=dataset,
             )
@@ -618,7 +652,8 @@ def main():
 
             run_agent_evaluation(
                 openai_client,
-                eval_name=f"audit-agent-enhanced{SUFFIX}",
+                eval_name=eval_name,
+                run_name=f"enhanced{SUFFIX}",
                 agent=agent,
                 dataset=dataset,
             )
